@@ -1,0 +1,9 @@
+-R ./lib lib
+
+lib/ExplicitName.v
+lib/Lang.v
+lib/Theorems.v
+lib/Poly.v
+lib/Solver.v
+lib/Elaborator.v
+lib/Checker.v

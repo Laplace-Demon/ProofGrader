@@ -1,0 +1,171 @@
+{
+	"LimitDef_statement_fun_x":
+	{
+		"theoremFormat": "LaTex",
+		"theoremContent": "\\forall f, \\forall a, \\forall b, (\\lim\\limits_{x \\to a}{f(x)} = b \\implies \\forall \\varepsilon \\gt 0, \\exists \\delta \\gt 0, \\forall x, (|x - a| \\le \\delta \\implies |f(x) - b| \\le \\varepsilon))",
+		"saturationAllowed": true,
+		"verificationAllowed": true,
+		"singleStepVerification": true,
+		"explicitReference": true,
+		"multipleStepVerification": true,
+		"automationRule":
+		{},
+		"keyWords": ["Limit", "Definition"]
+	},
+	"LimitDef_statement_fun_pos_infty":
+	{
+		"theoremFormat": "LaTex",
+		"theoremContent": "\\forall f, \\forall b, (\\lim\\limits_{x \\to +\\infty}{f(x)} = b \\implies \\forall \\varepsilon \\gt 0, \\exists M \\gt 0, \\forall x \\gt M, |f(x) - b| \\le \\varepsilon)",
+		"saturationAllowed": true,
+		"verificationAllowed": true,
+		"singleStepVerification": true,
+		"explicitReference": true,
+		"multipleStepVerification": true,
+		"automationRule":
+		{},
+		"keyWords": ["Limit", "Definition"]
+	},
+	"LimitDef_statement_fun_neg_infty":
+	{
+		"theoremFormat": "LaTex",
+		"theoremContent": "\\forall f, \\forall b, (\\lim\\limits_{x \\to -\\infty}{f(x)} = b \\implies \\forall \\varepsilon \\gt 0, \\exists M \\gt 0, \\forall x \\gt M, |f(x) - b| \\le \\varepsilon)",
+		"saturationAllowed": true,
+		"verificationAllowed": true,
+		"singleStepVerification": true,
+		"explicitReference": true,
+		"multipleStepVerification": true,
+		"automationRule":
+		{},
+		"keyWords": ["Limit", "Definition"]
+	},
+	"Continuity_x0_statement":
+	{
+		"theoremFormat": "LaTex",
+		"theoremContent": "\\forall f, \\forall x_0, (f is continuous at x_0 \\implies (\\forall \\varepsilon \\gt 0, \\exists \\delta \\gt 0, \\forall x, (|x - x_0| \\lt \\delta \\implies |f(x) - f(x_0)| \\lt \\varepsilon)))",
+		"saturationAllowed": true,
+		"verificationAllowed": true,
+		"singleStepVerification": true,
+		"explicitReference": true,
+		"multipleStepVerification": true,
+		"automationRule":
+		{},
+		"keyWords": ["Limit", "Definition"]
+	},
+	"UContinuity_statement":
+	{
+		"theoremFormat": "LaTex",
+		"theoremContent": "\\forall f, \\forall I, (f is uniformly continuous on I \\implies (\\forall \\varepsilon \\gt 0, \\exists \\delta \\gt 0, \\forall x1 \\in I, \\forall x2 \\in I, (|x1 - x2| \\lt \\delta \\implies |f(x1 - f(x2))| \\lt \\varepsilon)))",
+		"saturationAllowed": true,
+		"verificationAllowed": true,
+		"singleStepVerification": true,
+		"explicitReference": true,
+		"multipleStepVerification": true,
+		"automationRule":
+		{},
+		"keyWords": ["Limit", "Definition"]
+	},
+	"Supremum_statement_fun_epsilon_delta":
+	{
+		"theoremFormat": "LaTex",
+		"theoremContent": "\\forall f, \\forall M, (M = \\sup{f} \\implies \\forall \\varepsilon \\gt 0, \\exists n, f(n) \\gt M - \\varepsilon)",
+		"saturationAllowed": true,
+		"verificationAllowed": true,
+		"singleStepVerification": true,
+		"explicitReference": true,
+		"multipleStepVerification": true,
+		"automationRule":
+		{},
+		"keyWords": ["Limit", "Definition"]
+	},
+	"UpperBound_statement_fun":
+	{
+		"theoremFormat": "LaTex",
+		"theoremContent": "\\forall f, \\forall A, (f is bounded above by A \\implies \\forall n, f(n) \\lt A)",
+		"saturationAllowed": true,
+		"verificationAllowed": true,
+		"singleStepVerification": true,
+		"explicitReference": true,
+		"multipleStepVerification": true,
+		"automationRule":
+		{},
+		"keyWords": ["Limit", "Definition"]
+	},
+	"MonoInc_statement":
+	{
+		"theoremFormat": "LaTex",
+		"theoremContent": "\\forall f, (f is monotonically increasing \\implies (\\forall a, \\forall b, (a \\gt b \\implies f(a) \\gt f(b))))",
+		"saturationAllowed": true,
+		"verificationAllowed": true,
+		"singleStepVerification": true,
+		"explicitReference": true,
+		"multipleStepVerification": true,
+		"automationRule":
+		{},
+		"keyWords": ["Limit", "Definition"]
+	},
+	"CauchySeq_statement":
+	{
+		"theoremFormat": "LaTex",
+		"theoremContent": "\\forall a, (a is cauchy sequence \\implies \\forall \\varepsilon \\gt 0, \\exists N, \\forall n \\gt N, \\forall m \\gt N, |a_n - a_m| \\lt \\varepsilon)",
+		"saturationAllowed": true,
+		"verificationAllowed": true,
+		"singleStepVerification": true,
+		"explicitReference": true,
+		"multipleStepVerification": true,
+		"automationRule":
+		{},
+		"keyWords": ["Limit", "Definition"]
+	},
+	"SupremumAndInfimum_theorem":
+	{
+		"theoremFormat": "LaTex",
+		"theoremContent": "\\forall f, (f is bounded above \\implies \\exists A, A = \\sup{f})",
+		"saturationAllowed": true,
+		"verificationAllowed": true,
+		"singleStepVerification": true,
+		"explicitReference": true,
+		"multipleStepVerification": true,
+		"automationRule":
+		{},
+		"keyWords": ["Limit", "Definition"]
+	},
+	"causal_inference_monoinc":
+	{
+		"theoremFormat": "LaTex",
+		"theoremContent": "\\forall a, (a is monotonically increasing \\implies \\forall x, \\forall y, (x \\gt y \\implies a_x \\gt a_y))",
+		"saturationAllowed": true,
+		"verificationAllowed": true,
+		"singleStepVerification": true,
+		"explicitReference": true,
+		"multipleStepVerification": true,
+		"automationRule":
+		{},
+		"keyWords": ["Limit", "Definition"]
+	},
+	"causal_inference_boundedaboveby":
+	{
+		"theoremFormat": "LaTex",
+		"theoremContent": "\\forall a, \\forall A, (a is bounded above by A \\implies \\forall n, a_n \\le A)",
+		"saturationAllowed": true,
+		"verificationAllowed": true,
+		"singleStepVerification": true,
+		"explicitReference": true,
+		"multipleStepVerification": true,
+		"automationRule":
+		{},
+		"keyWords": ["Limit", "Definition"]
+	},
+	"causal_inference_cauchyseqbound":
+	{
+		"theoremFormat": "LaTex",
+		"theoremContent": "\\forall a, (a is cauchy sequence \\implies a is bounded)",
+		"saturationAllowed": true,
+		"verificationAllowed": true,
+		"singleStepVerification": true,
+		"explicitReference": true,
+		"multipleStepVerification": true,
+		"automationRule":
+		{},
+		"keyWords": ["Limit", "Definition"]
+	}
+}

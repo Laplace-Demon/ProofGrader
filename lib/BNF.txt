@@ -1,0 +1,99 @@
+Program : ==
+|  Statement  
+|  Program Statement  
+
+Statement :==
+| 命题 
+| “因为：” 命题
+| “由于：” 命题
+| “所以：” 命题
+| “使用反证法：” “{” Statement “}”  
+| “使用**法证明” Equation “： {” Statement “}”
+| “综上：” 命题
+| “不妨设”  命题
+| Action
+| Tag
+
+Tag ：== 
+| “证:”
+| “证毕。”
+
+Action :==
+| Actionword Variable Actioncommand
+
+Actionword :==
+| “取”
+| “令”
+| “设”
+
+Actioncommand :==
+| “=” Term
+| “=” Description
+| “为” Description
+| “满足” 命题
+
+
+Description :==
+| “(” Pair “)” “中最大的一个“
+| “(” Pair “)” “中最小的一个“
+| Term “中最大的一个”
+| Term “中最小的一个”
+
+
+Pair :==
+| Term “,” Term
+| Pair “,” Term
+
+命题 :==
+| “对于任意” 命题 命题 
+| “对于任意” Variable 命题 
+| “存在” 命题 命题
+| “存在” Variable 命题
+| 命题 “且” 命题
+| 命题 “或” 命题
+| “如果” 命题 “那么” 命题
+| Equation
+
+Equation :==
+| “$” 等式 “$”
+| “$” 严格不降式 “$”
+| “$” 严格不增式 “$”
+
+等式 :==
+| Term “=” Term
+| 等式 “=” Term
+
+严格不降式 :==
+| Term 严格不降号 Term
+| 严格不降式 严格不降号 Term
+
+严格不增式 :==
+| Term 严格不增号 Term
+| 严格不增式 严格不增号 Term
+
+严格不降号 :==
+| “=”
+| “<”
+| “<=”
+
+严格不增号 :==
+| “=”
+| “>”
+| “>=”
+
+Term :==
+| Number 
+| Variable
+| Term “_” Term
+| Term “^” Term
+| Term “+” Term
+| Term “-”  Term
+| Term “*”  Term
+| Term “/”  Term
+| “(” Term “)”
+| “|” Term “|”
+| “[” Term “]”
+| “{” Term “}”
+
+
+
