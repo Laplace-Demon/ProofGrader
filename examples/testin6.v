@@ -1,7 +1,7 @@
 From lib Require Import ExplicitName.
 From lib Require Import Lang.
-From lib Require Import Solver.
 From lib Require Import Poly.
+From lib Require Import Solver.
 From lib Require Import Elaborator.
 From lib Require Import Checker.
 Require Import String.
@@ -11,15 +11,20 @@ Local Open Scope Z.
 Local Open Scope string.
 Local Open Scope list.
 Import ListNotations.
-Definition premise: list prop := (PBinPred PROP.REq (TVar "f")
-(TBinder TERM.LambdaB "x" (TUnOp TERM.RCos (TBinOp TERM.RSqrt (TNum 2) (TBinOp TERM.RMult (TNum 2) (TVar "x")))))) :: nil.
-Module Goal001.
+Definition premise: list prop :=
+(PBinPred PROP.RGt (TVar "epss" )(TNum 0))::(PBinPred PROP.RGt (TVar "delta" )(TNum 0))::(PBinPred PROP.RGe (TVar "x1" )(TNum 0))::(PBinPred PROP.RGe (TVar "x2" )(TNum 0))::(PBinPred PROP.RLe  (TUnOp TERM.RAbs ((TBinOp TERM.RMinus
+	((TVar "x1" ))	((TVar "x2" )))))(TVar "delta" ))::(PBinPred PROP.REq (TVar "delta" )(TBinOp TERM.RMin((TBinOp TERM.RDiv
+	((TBinOp TERM.RPower
+	((TVar "epss" ))	((TNum 2))))	((TNum 2))))((TBinOp TERM.RDiv
+	((TBinOp TERM.RPower
+	((TConst TERM.RPi))	((TNum 2))))	((TNum 2))))))::(PBinPred PROP.RGe (TVar "x1" )(TVar "x2" ))::nil. 
+Module ProofGoal.
 Definition stmt: prop :=
-(PBinPred PROP.UContinueOn (TVar "f")
-(TInterval TERM.LClosed_ROpen_interval (TNum 0) (TInfty TERM.Positive_Infty))).
+(PBinPred PROP.RLe  (TUnOp TERM.RAbs ((TBinOp TERM.RMinus
+	((TUnOp TERM.RCos ((TBinOp TERM.RSqrt (TNum 2)((TBinOp TERM.RMult
+	((TNum 2))	((TVar "x1" ))))))))	((TUnOp TERM.RCos ((TBinOp TERM.RSqrt (TNum 2)((TBinOp TERM.RMult
+	((TNum 2))	((TVar "x2" )))))))))))(TVar "epss" )).
 (*Proof starts here*)
-
-
 Definition pr: proof :=
 ((PrPoseWithoutProof 12 13 PROOF.FNoHint
 	)((PBinPred PROP.RGe (TBinOp TERM.RMinus
@@ -135,10 +140,10 @@ Definition pr: proof :=
 
 
 Definition assum := get_assum premise nil.
-Definition pg := {| assu := assum; concl := stmt; cont := nil |}.
-Definition temp := elaboration pg pr .
+Definition pg := {| assu := assum; concl := stmt; cont := nil|}.
+Definition temp := elaboration pg pr.
 Definition pg' := fst temp.
 Definition pr':=snd temp.
-Definition check_result := check_rec' pg' pr'.
+Definition check_result := fst (check_rec' pg' pr').
 Compute check_result.
-End Goal001.
+End ProofGoal.

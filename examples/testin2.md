@@ -16,7 +16,6 @@ suppose $a \gt 0$，
 满足$n\gt N$，
 
 易知：
-$$
-|\frac{3*n}{5*n+2} - \frac{3}{5}| = \frac{6}{25*n + 10} 
-\le \frac{6}{25*n} \le a
-$$
+$$|\frac{3*n}{5*n+2} - \frac{3}{5}| = \frac{6}{25*n + 10} 
+\le \frac{6}{25*n} \le a$$
+综上可知，原命题得证。

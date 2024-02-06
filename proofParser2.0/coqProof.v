@@ -11,8 +11,8 @@ Local Open Scope Z.
 Local Open Scope string.
 Local Open Scope list.
 Import ListNotations.
-Definition premise: list prop := nil . 
-Module Goal001.
+Definition premise: list prop := nil.
+Module ProofGoal.
 Definition stmt: prop :=
 (PQuant PROP.QForall "a" (PBinOp PROP.CImpl (PUnPred PROP.BoundedAbove  (TVar "a"))(PBinOp PROP.CImpl (PUnPred PROP.MonoInc (TVar "a"))(PQuant PROP.QExists "A"(PBinPred PROP.REq (TBinOp TERM.RLim 
 (TInfty TERM.Positive_Infty)(TBinder TERM.LambdaB "n"
@@ -66,6 +66,6 @@ Definition pg := {| assu := assum; concl := stmt; cont := nil|}.
 Definition temp := elaboration pg pr.
 Definition pg' := fst temp.
 Definition pr':=snd temp.
-Definition check_result := fst (check_rec' pg' pr' ).
+Definition check_result := fst (check_rec' pg' pr').
 Compute check_result.
-End Goal001.
+End ProofGoal.

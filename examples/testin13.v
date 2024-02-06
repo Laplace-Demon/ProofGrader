@@ -1,7 +1,7 @@
 From lib Require Import ExplicitName.
 From lib Require Import Lang.
-From lib Require Import Solver.
 From lib Require Import Poly.
+From lib Require Import Solver.
 From lib Require Import Elaborator.
 From lib Require Import Checker.
 Require Import String.
@@ -20,7 +20,7 @@ Definition premise: list prop :=
 	((TVar "x" ))	((TNum 2)))))	((TNum 2))))	((TBinOp TERM.RPower
 	(((TBinOp TERM.RPlus
 	((TVar "x" ))	((TNum 3)))))	((TNum 3))))))) ))::nil. 
-Module Goal001.
+Module ProofGoal.
 Definition stmt: prop :=
 (PBinPred PROP.REq (TApply (TUnOp TERM.Deri (TVar "f" ))(TVar "x" ))(TBinOp TERM.RMult
 	(((TBinOp TERM.RPlus
@@ -90,10 +90,10 @@ Definition pr: proof :=
 
 
 Definition assum := get_assum premise nil.
-Definition pg := {| assu := assum; concl := stmt; cont := nil |}.
-Definition temp := elaboration pg pr .
+Definition pg := {| assu := assum; concl := stmt; cont := nil|}.
+Definition temp := elaboration pg pr.
 Definition pg' := fst temp.
 Definition pr':=snd temp.
-Definition check_result := check_rec' pg' pr'.
+Definition check_result := fst (check_rec' pg' pr').
 Compute check_result.
-End Goal001.
+End ProofGoal.

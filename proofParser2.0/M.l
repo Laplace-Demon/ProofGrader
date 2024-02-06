@@ -144,6 +144,11 @@
     return TVAR;
     }
 
+"\\in" {
+    yylval.a = newast(leaf_belong,yytext,yyleng,NULL,NULL,NULL);
+    return TBELONG;
+}
+
 [2-9]+\.|[1-9][0-9]+\. {
     yylval.a = newast(leaf_line,yytext,yyleng,NULL,NULL,NULL);
     return TLINE;
@@ -168,7 +173,7 @@
     }
     // for(int i = 0;i<yyleng-1;++i)
     // { printf("%c",tmp[i]); }
-    yylval.a = newast(leaf_var,tmp,yyleng-1,NULL,NULL,NULL);
+    yylval.a = newast(leaf_seq_var,tmp,yyleng-1,NULL,NULL,NULL);
     return TVAR;
 }
 
@@ -308,7 +313,7 @@
     return TNinfty;
 }
 
-"\\forall "|"任意" {
+"\\forall "|"任意"|"对于任意" {
     char tmp[] = "forall";
     yylval.a = newast(leaf_forall,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
     return Tforall;
@@ -362,12 +367,12 @@
     yylval.a = newast(leaf_LB2R,yytext,yyleng,NULL,NULL,NULL);
     return LB2R;
 }
-"{"|"\\lbrace" {
+"\{"|"{"|"\\lbrace" {
     yylval.a = newast(leaf_LB3L,yytext,yyleng,NULL,NULL,NULL);
     return LB3L;
 }
 
-"}"|"\\rbrace" {
+"\}"|"}"|"\\rbrace" {
     yylval.a = newast(leaf_LB3R,yytext,yyleng,NULL,NULL,NULL);
     return LB3R;
 }
@@ -419,6 +424,12 @@
     return Tcos;
 }
 
+"\\sup" {
+    char tmp[] = "sup";
+    yylval.a = newast(leaf_SUP,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return Tsup;
+}
+
 "Proof"[\[ \t]*]*[\.\:：]|"证"[：\:] {
     char tmp[] = "proof";
     yylval.a = newast(leaf_proof,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
@@ -440,7 +451,7 @@
 "Assum"|"假定"|"假设"|"设"|[^\[ \t]*]*设 {
     char tmp[] = "assum";
     yylval.a = newast(leaf_assume,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
-    return ASSUM;
+    return SUPPOSE;
 }
 
 "由"|"根据" {
@@ -448,6 +459,7 @@
     yylval.a = newast(leaf_since,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
     return SINCE;
 }
+
 
 "变形得"|"式变形得"|"等价变形得"|"式等价变形得" {
     char tmp[] = "trans";
@@ -472,7 +484,7 @@
     return SAME;
 }
 
-"那么"|"则"|"so"|"then"|"thus"|"得"|"可知"|"可证"|"可得" {
+"那么"|"则"|"so"|"then"|"thus"|"得"|"可知"|"可证"|"可得"|"所以" {
     char tmp[] = "then";
     yylval.a = newast(leaf_then,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
     return THEN;
@@ -519,17 +531,38 @@
     yylval.a = newast(leaf_IN,NULL,0,NULL,NULL,NULL);
     return IN;
 }
+
+"若" {
+    yylval.a = newast(leaf_IF,NULL,0,NULL,NULL,NULL);
+    return IF;
+}
+
+"有" {
+    yylval.a = newast(leaf_HAVE,NULL,0,NULL,NULL,NULL);
+    return HAVE;
+}
+"是" {
+    yylval.a = newast(leaf_IS,NULL,0,NULL,NULL,NULL);
+    return IS;
+}
+
 "连续"|"处连续" {
     yylval.a = newast(leaf_CONTINUE,NULL,0,NULL,NULL,NULL);
     return CONTINUE;
 }
+
+"一致连续"|"处一致连续" {
+    yylval.a = newast(leaf_UCONTINUE,NULL,0,NULL,NULL,NULL);
+    return UCONTINUE;
+}
+
 "PoseWithoutProof" {
     char tmp[] = "PoseWithoutProof";
     yylval.a = newast(leaf_PWP,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
     return PWP;
 }
 
-"PoseAndProve" {
+"下面证明"|"PoseAndProve" {
     char tmp[] = "PoseAndProve";
     yylval.a = newast(leaf_PAP,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
     return PAP;
@@ -593,6 +626,30 @@
     return CONTINUE_DEF;
 }
 
+"确界原理" {
+    char tmp[] = "supre_theorem";
+    yylval.a = newast(leaf_SUPRE_THEOREM ,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return SUPRE_THEOREM;
+}
+
+"上确界定义" {
+    char tmp[] = "supre_def";
+    yylval.a = newast(leaf_SUPRE_DEF ,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return SUPRE_DEF;
+}
+
+"上界" {
+    char tmp[] = "BoundAbove";
+    yylval.a = newast(leaf_BOUND_ABOVE ,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return BOUND_ABOVE;
+}
+
+"下界" {
+    char tmp[] = "BoundBelow";
+    yylval.a = newast(leaf_BOUND_BELOW ,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return BOUND_BELOW;
+}
+
 "一致连续定义" {
     char tmp[] = "UContinue_def";
     yylval.a = newast(leaf_UC_DEF,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
@@ -643,10 +700,30 @@
     return AUTO_NOHINT;
 }
 
+"因为" {
+    char tmp[] = "because";
+    yylval.a = newast(leaf_because,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return BECAUSE;
+}
+
+"单增"|"单调递增" {
+    char tmp[] = "MonoInc";
+    yylval.a = newast(leaf_MONOINC,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return MONOINC;
+}
+
+"单减"|"单调递减" {
+    char tmp[] = "MonoDec";
+    yylval.a = newast(leaf_MONODEC,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return MONODEC;
+}
+
 
 [ \t\n，:：；。\r]    { };
 
 [1]\. {};
+
+"的" {};
 
 .   {printf("%s",yytext);
      yyerror("Mystery Character.");}

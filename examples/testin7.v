@@ -1,7 +1,7 @@
 From lib Require Import ExplicitName.
 From lib Require Import Lang.
-From lib Require Import Solver.
 From lib Require Import Poly.
+From lib Require Import Solver.
 From lib Require Import Elaborator.
 From lib Require Import Checker.
 Require Import String.
@@ -12,7 +12,7 @@ Local Open Scope string.
 Local Open Scope list.
 Import ListNotations.
 Definition premise: list prop := nil . 
-Module Goal001.
+Module ProofGoal.
 Definition stmt: prop :=
 (PBinPred PROP.REq (TBinOp TERM.RLim 
 ((TNum 0))(TBinder TERM.LambdaB "x"
@@ -33,7 +33,7 @@ Definition stmt: prop :=
 	((TNum 1))	((TNum 6)))).
 (*Proof starts here*)
 Definition pr: proof :=
-((PrPoseWithoutProof 6 10 PROOF.FNoHint
+((PrPoseWithoutProof 6 9 PROOF.FNoHint
 	)((PLongOrder 	PROP.REq 
 ((TBinOp TERM.RLim 
 ((TNum 0))(TBinder TERM.LambdaB "x"
@@ -170,14 +170,14 @@ Definition pr: proof :=
 	((TVar "x" ))	((TNum 4))))	((TBinOp TERM.RPower
 	((TVar "x" ))	((TNum 4))))))))))
 (TBinOp TERM.RDiv
-	((TNum 1))	((TNum 6))))))))))))))))))))))(PrConclWithoutProof 11 11 PROOF.FNoHint)).
+	((TNum 1))	((TNum 6))))))))))))))))))))))(PrConclWithoutProof 10 10 PROOF.FNoHint)).
 
 
 Definition assum := get_assum premise nil.
-Definition pg := {| assu := assum; concl := stmt; cont := nil |}.
-Definition temp := elaboration pg pr .
+Definition pg := {| assu := assum; concl := stmt; cont := nil|}.
+Definition temp := elaboration pg pr.
 Definition pg' := fst temp.
 Definition pr':=snd temp.
-Definition check_result := check_rec' pg' pr'.
+Definition check_result := fst (check_rec' pg' pr').
 Compute check_result.
-End Goal001.
+End ProofGoal.

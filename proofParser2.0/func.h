@@ -8,9 +8,11 @@ enum Leaf {
   MARKER_L_leaf = 0,
   leaf_const,
   leaf_var,
+  leaf_seq_var,
   leaf_num,
   leaf_line,
   leaf_add,
+  leaf_belong,
   leaf_times,
   leaf_div,
   leaf_minus,
@@ -69,22 +71,34 @@ enum Leaf {
   leaf_RFLOOR,
   leaf_SIN,
   leaf_COS,
+  leaf_SUP,
   leaf_LIM_DEF,
   leaf_CONTINUE_DEF,
   leaf_UC_DEF,
+  leaf_SUPRE_THEOREM,
+  leaf_SUPRE_DEF,
+  leaf_BOUND_BELOW,
+  leaf_BOUND_ABOVE,
   leaf_FSqueeze,
   leaf_TO_PROVE,
   leaf_INTROS,
   leaf_SUPPOSE,
   leaf_IN,
+  leaf_IF,
+  leaf_HAVE,
+  leaf_IS,
   leaf_For,
   leaf_Deri,
   leaf_Both,
   leaf_CONTINUE,
+  leaf_UCONTINUE,
   leaf_SET,
   leaf_COMMA,
   leaf_AUTO_CONC,
   leaf_AUTO_NOHINT,
+  leaf_because,
+  leaf_MONOINC,
+  leaf_MONODEC,
   leaf_USE,
   leaf_forall,
   leaf_exists,
@@ -96,6 +110,8 @@ enum NonTerminal {
   MARKER_l_nt = MARKER_r_leaf + 1, /* 64 */
   nt_PROGRAM,
   nt_STATEMENT,
+  nt_PROOF_STATEMENT,
+  nt_PROOF_STATEMENT_LIST,
   nt_GOAL_STATEMENT,
   nt_GIVEN_STATEMENT,
   nt_MATH_LIST,
@@ -179,8 +195,13 @@ enum NonTerminal_leaf{
   ntl_TO_PROVE,
   ntl_sin,
   ntl_cos,
+  ntl_sup,
   ntl_CONTINUE_DEF,
   ntl_UC_DEF,
+  ntl_SUPRE_THEOREM,
+  ntl_SUPRE_DEF,
+  ntl_BOUND_BELOW,
+  ntl_BOUND_ABOVE,
   ntl_FSqueeze,
   ntl_INTROS,
   ntl_SET,
@@ -192,9 +213,18 @@ enum NonTerminal_leaf{
   ntl_Texists,
   ntl_Tforall,
   ntl_IN,
+  ntl_IS,
+  ntl_IF,
+  ntl_HAVE,
   ntl_CONTINUE,
+  ntl_UCONTINUE,
   ntl_AUTO_CONC,
   ntl_AUTO_NOHINT,
+  ntl_BECAUSE,
+  ntl_TBELONG,
+  ntl_MONOINC,
+  ntl_MONODEC,
+  ntl_PAP,
   ntl_forall,
   ntl_exists,
   ntl_power,
@@ -216,11 +246,28 @@ enum Program {
 };
 
 enum Statement {
-  MARKER_l_stmt = MARKER_r_prog + 1, /* 85 */
+  MARKER_l_stmt = MARKER_r_prog + 1,
   stmt_goal,
   stmt_given,
-  stmt_qed,
+  stmt_proof_list,
   stmt_proof,
+  MARKER_r_stmt
+};
+
+enum Proof_Statement_List {
+  MARKER_l_proof_stmt_list = MARKER_r_stmt + 1,
+  proof_stmt_list_single,
+  proof_stmt_list,
+  proof_stmt_PoseAndProve,
+  proof_stmt_PoseVar,
+  MARKER_r_proof_stmt_list
+};
+
+
+
+enum Proof_Statement {
+  MARKER_l_proof_stmt = MARKER_r_proof_stmt_list + 1, /* 85 */
+  stmt_qed,
   stmt_since_remember_as,
   stmt_action_math_equation,
   stmt_action_conclude,
@@ -229,19 +276,20 @@ enum Statement {
   stmt_use_uc_to_prove,
   stmt_action,
   stmt_since_no_remember,
-  point_continue,
-  MARKER_r_stmt
+  MARKER_r_proof_stmt
 };
 
+
+
 enum given_stmt {
-  MARKER_l_given_stmt = MARKER_r_stmt+1,
+  MARKER_l_given_stmt = MARKER_r_proof_stmt + 1,
   given_single,
   given_list,
   MARKER_r_given_stmt
 };
 
 enum goal_stmt {
-  MARKER_l_goal_stmt = MARKER_r_stmt + 1, /* 96 */
+  MARKER_l_goal_stmt = MARKER_r_given_stmt + 1, /* 96 */
   goal_math_equa,
   MARKER_r_goal_stmt
 };
@@ -249,14 +297,16 @@ enum goal_stmt {
 enum action_stmt {
   MARKER_l_action_stmt = MARKER_r_goal_stmt + 1, /* 99 */
   action_stmt_intros,
+  action_stmt_intros_suppose_list_equation,
   action_stmt_suppose,
   action_stmt_set_as_math_expr1,
   action_stmt_set_as_math_expr2,
   MARKER_r_action_stmt
 };
 
+
 enum math_list {
-  MARKER_l_math_list = MARKER_r_action_stmt+1,
+  MARKER_l_math_list = MARKER_r_action_stmt + 1,
   math_list_two,
   math_list_n,
   MARKER_r_math_list
@@ -264,7 +314,7 @@ enum math_list {
 };
 
 enum math_equation {
-  MARKER_l_math_equation = MARKER_r_action_stmt + 1, /* 105 */
+  MARKER_l_math_equation = MARKER_r_math_list + 1, /* 105 */
   math_equation_math1,
   math_equation_math2,
   math_equation_continued2,
@@ -273,6 +323,22 @@ enum math_equation {
   math_equation_func,
   math_equation_forall,
   math_equation_exists,
+  math_equation_exists_sets,
+  math_equation_forall_sets,
+  math_equation_in_var_continue,
+  math_equation_in_interval_continue,
+  math_equation_in_var_ucontinue,
+  math_equation_in_interval_ucontinue,
+  math_equation_continue,
+  math_equation_ucontinue,
+  math_equation_monoinc,
+  math_equation_monodec,
+  math_equation_bound_above,
+  math_equation_bound_below,
+  math_equation_impl,
+  math_equation_have_bound_above,
+  math_equation_have_bound_below,
+  math_equation_n_belong_N,
   MARKER_r_math_equation
 };
 
@@ -317,7 +383,7 @@ enum Func_head{
   MARKER_r_Func_head
 };
 enum Interval{
-  MARKER_l_Interval = MARKER_r_Lim_head+1,
+  MARKER_l_Interval = MARKER_r_Func_head+1,
   Interval_lopen_ropen,
   Interval_lclosed_ropen,
   Interval_lopen_rclosed,
@@ -330,7 +396,7 @@ enum Interval{
 };
 
 enum Expr {
-  MARKER_l_Expr = MARKER_r_Lim_head + 1, /* 129 */
+  MARKER_l_Expr = MARKER_r_Interval + 1, /* 129 */
   Expr_tvar,
   Expr_tconst,
   Expr_tnum,
@@ -345,6 +411,7 @@ enum Expr {
   Expr_tln,
   Expr_tsin,
   Expr_tcos,
+  Expr_tsup,
   Expr_3L_3R_3L_3R,
   Expr_1L_1R,
   Expr_derivative,
@@ -356,6 +423,7 @@ enum Expr {
   Expr_tpower,
   Expr_tmin,
   Expr_func,
+  Expr_seq_sets,
   MARKER_r_Expr
 };
 
@@ -365,6 +433,9 @@ enum Knowledge {
   Knowledge_KSGaverage,
   Knowledge_KAGaverage,
   Knowledge_FSqueeze,
+  Knowledge_Supre_def,
+  Knowledge_Supre_the,
+  Knowledge_Lim_def,
   Knowledge_Math1,
   Knowledge_Math2,
   MARKER_r_Knowledge
@@ -380,6 +451,7 @@ enum Since_clause {
   Since_clause_trans,
   Since_clause_BothDeri,
   Since_clause_BothDeri_var,
+  Since_clause_because,
   MARKER_r_Since_clause
 };
 
@@ -433,5 +505,5 @@ void exprvar(struct ast *root, char *s);
 //char var_in(list *res);
 char var_in(char *s);
 int strToNum(char *str);
-void add_lineNum();
+void add_lineNum(char fileName[], char tempFileName[], FILE *fp);
 #endif // FUNC_H_INCLUDED

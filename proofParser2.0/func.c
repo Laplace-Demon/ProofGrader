@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "func.h"
-//#define DBG
+#define DBG
 extern int action_stack;
 //语法树节点定义
 struct ast *newast(int nodetype, char *text, int len, struct ast *l, struct ast *r,struct ast *lineNum)
@@ -51,71 +51,34 @@ struct ast *con_var = NULL;
 
 void printtree(struct ast *root,FILE *fp)
 {
-    if (root == NULL)
-    {
-        return;
-    }
-
+    if (root == NULL) return;
     switch(root->nodetype)
     {
         case nt_PROGRAM:
             #ifdef DBG
                 printf("program\n");
-                
             #endif
-            if(root == NULL) break;
-            if(root->l->len!=stmt_given&&root->l->len==stmt_goal){
-            if(premise_flag==0)
-            fprintf(fp,"Definition premise: list prop := nil . \n");}
-            // if(root->nodetype == goal_statement)
-            // {
-            //     printf("yes");
-            // }
-
-            // printf("%d",root->l->l->nodetype);
-            if(root->l!=NULL && root->l->len ==stmt_goal)
-            {
-                printtree(root->l,fp);
-                printtree(root->r,fp);
+            if (root == NULL) break;
+            if (root->l->len != stmt_given && root->l->len == stmt_goal) {
+                if (premise_flag == 0) fprintf(fp, "Definition premise: list prop := nil.\n");
             }
-            else if(root->l!=NULL && root->l->len ==stmt_use_limit_to_prove)
-            {
-                
-                printtree(root->l,fp);
-                printtree(root->r,fp);
-            }
-            else if(root->r!=NULL && root->r->l->len ==stmt_goal)
-            {
-                printtree(root->l,fp);
-                printtree(root->r,fp);
-            }
-            else if(root->r!=NULL && root->r->r!=NULL)
-            {
-                printtree(root->l,fp);
-             
-                fprintf(fp,"(");
-                printtree(root->r,fp);
-                fprintf(fp,")");                
-            } 
-            else 
-            {
-                printtree(root->l,fp);
-                printtree(root->r,fp);
-            }
+            printtree(root->l, fp);
+            printtree(root->r, fp);
             break;
-        
         case nt_STATEMENT:
+            #ifdef DBG
+                printf("statement\n");
+            #endif
         switch (root->len)
-        {
+        {   
             case stmt_goal:
             #ifdef DBG
                 printf("goal\n");
             #endif
             fprintf(fp,"Module ProofGoal.\n");
             fprintf(fp,"Definition stmt: prop :=\n");
-            printtree(root->l,fp);
-            fprintf(fp,".");
-            
+            printtree(root->l, fp);
+            fprintf(fp, ".");
             break;
           case stmt_given:
             #ifdef DBG
@@ -127,11 +90,146 @@ void printtree(struct ast *root,FILE *fp)
             fprintf(fp,"nil. \n");
             
             break;
+          case stmt_proof:
+            #ifdef DBG
+                printf("proof\n");
+            #endif
+            fprintf(fp,"\n(*Proof starts here*)\nDefinition pr: proof :=\n");
+            lineNumber = strToNum(root->lineNum->addr);
+            break;
+         case stmt_proof_list:
+            printtree(root->l,fp);
+        }
+        break;
+        case nt_PROOF_STATEMENT_LIST:
+           #ifdef DBG
+                printf("proof_statement_list\n");
+           #endif
+        switch (root->len)
+        {  
+           case proof_stmt_list_single:
+           if(root->lineNum != NULL) {
+               lineEnd = strToNum(root->lineNum->addr) - 1;
+           }
+           fprintf(fp,"(");
+           printtree(root->l,fp);
+           
+           if(root->l->len == stmt_since_no_remember){
+                fprintf(fp,"(PrEndPartialProof)");
+           }
+           fprintf(fp,")");
+           break;
+
+           case proof_stmt_list:
+           if(root->l != NULL && root->l->lineNum != NULL)
+           {
+              lineEnd = strToNum(root->l->lineNum->addr) - 1;
+           }
+           else
+           {
+              printf("lineNumber must follow comma \n");
+              break;
+           }
+           fprintf(fp,"((");
+           printtree(root->r->l,fp);
+           fprintf(fp,")");
+           lineNumber = lineEnd + 1;
+           lineEnd = 0;
+           fprintf(fp,"\n (");
+           printtree(root->r->r,fp);
+           fprintf(fp,"))");
+           break;
+
+           case proof_stmt_PoseAndProve:
+           if(root->lineNum != NULL)
+           {
+              lineEnd = strToNum(root->lineNum->addr) - 1;
+           }
+           else
+           {
+              printf("lineNumber must follow \"}\" \n");
+              break;
+           }
+           fprintf(fp,"PrPoseAndProve %d %d (PROOF.FNoHint) ",lineNumber,lineEnd);
+           printtree(root->l,fp);
+           fprintf(fp,"\n (");
+           printtree(root->r->l,fp);
+           fprintf(fp,")\n(");
+           printtree(root->r->r,fp);
+           fprintf(fp,")");
+           break;
+
+           case proof_stmt_PoseVar:
+           if(root->lineNum != NULL)
+           {
+              lineEnd = strToNum(root->lineNum->addr) - 1;
+           }
+           else
+           {
+              printf("can't find lineNumber in action \n");
+              break;
+           }
+           if(root->l->len == action_stmt_intros){
+                if(root->lineNum != NULL)
+                {
+                  lineEnd = strToNum(root->lineNum->addr) - 1;
+                }
+                else
+                {
+                  printf("lineNumber must follow \"}\" \n");
+                  break;
+                }
+                fprintf(fp,"PrPosePartialProof %d %d (PROOF.APoseVar \"",lineNumber, lineEnd);
+                if(root->l->r->l->nodetype == leaf_var)
+                {
+                    for(int i = 0;i<root->l->r->l->len-1;++i)
+                       if(root->l->r->l->addr[i])
+                           fprintf(fp,"%c",root->l->r->l->addr[i]);
+                }
+                fprintf(fp,"\" nil)");
+                int tmp = lineEnd;
+                printtree(root->r->l,fp);
+                printf("%d \n",lineNumber);
+                lineNumber = tmp + 1;
+                printtree(root->r->r,fp);
+           }
+           if(root->l->len == action_stmt_intros_suppose_list_equation){
+            if(root->lineNum != NULL)
+                {
+                  lineEnd = strToNum(root->lineNum->addr) - 1;
+                }
+                else
+                {
+                  printf("lineNumber must follow \"}\" \n");
+                  break;
+                }
+                fprintf(fp,"PrPosePartialProof %d %d (PROOF.APoseVar \"",lineNumber, lineEnd);
+                if(root->l->l->l->nodetype == leaf_var)
+                {
+                    for(int i = 0;i<root->l->l->l->len-1;++i)
+                       if(root->l->l->l->addr[i])
+                           fprintf(fp,"%c",root->l->l->l->addr[i]);
+                }
+                fprintf(fp,"\" (");
+                printtree(root->l->r,fp);
+                fprintf(fp,"nil))");
+                int tmp = lineEnd;
+                printtree(root->r->l,fp);
+                printf("%d \n",lineNumber);
+                lineNumber = tmp + 1;
+                printtree(root->r->r,fp);
+           }
+        }
+        break;
+        case nt_PROOF_STATEMENT:
+        switch (root->len)
+        {
+            
           case stmt_since_remember_as:
           case stmt_action_math_equation:
           case stmt_action_conclude:
             #ifdef DBG
-                printf("statement\n");
+                printf("proof_statement\n");
             #endif
             
             if(root->r != NULL && root->r->nodetype == ntl_conclude)
@@ -142,19 +240,19 @@ void printtree(struct ast *root,FILE *fp)
                 #endif
                 //fprintf(fp,"(( line %d-%d )",lineNumber,lineNumber);
                 
-                fprintf(fp,"(PrConclWithoutProof %d %d",lineNumber,lineNumber);
+                fprintf(fp,"PrConclWithoutProof %d %d",lineNumber,lineNumber);
                 printtree(root->l,fp);               
-                fprintf(fp,")");
+                //fprintf(fp,")");
             }
             else if(root->l != NULL && root->l->nodetype == nt_SINCE_CLAUSE)
             { // brackets needs attention here
-                lineEnd = strToNum(root->lineNum->addr) -1;
+                //lineEnd = strToNum(root->lineNum->addr) -1;
                 printtree(root->l,fp);
-                fprintf(fp,"(");
+                //fprintf(fp,"(");
                 printtree(root->r,fp);
-                fprintf(fp,")"); 
-                lineNumber = lineEnd +1;    
-                lineEnd = 0;          
+                //fprintf(fp,")"); 
+                //lineNumber = lineEnd +1;    
+                //lineEnd = 0;          
             }
             
             else{
@@ -166,40 +264,33 @@ void printtree(struct ast *root,FILE *fp)
             #ifdef DBG
                 printf("no_remember statement\n");
             #endif
-            lineEnd = strToNum(root->lineNum->addr) -1;
+            //lineEnd = strToNum(root->lineNum->addr) -1;
             printtree(root->l,fp);
-            fprintf(fp,"(");
+            //fprintf(fp,"(");
             printtree(root->r,fp);
-            fprintf(fp,")");
-            lineNumber = lineEnd +1;
-            lineEnd = 0;
+            //fprintf(fp,")");
+            //lineNumber = lineEnd +1;
+            //lineEnd = 0;
             break;
           case stmt_action:
             #ifdef DBG
                 printf("action_statement\n");
             #endif
-            fprintf(fp,"(PrAction %d",lineNumber);
+            fprintf(fp,"PrAction %d %d",lineNumber, lineEnd);
             //fprintf(fp,"(( line %d-",lineNumber);
-            if(root->lineNum != NULL){
+            /*if(root->lineNum != NULL){
                          printtree(root->lineNum,fp);
                     }
                     else {
                          printf("can't find lineNumber in stmt_action ");
                          break;
-                    }
+                    }*/
             
-            action_stack++;
+            //action_stack++;
             printtree(root->l,fp);
             
             break;
         
-          case stmt_proof:
-            #ifdef DBG
-                printf("proof\n");
-            #endif
-            fprintf(fp,"\n(*Proof starts here*)\nDefinition pr: proof :=\n");
-            lineNumber = strToNum(root->lineNum->addr);
-            break;
           case stmt_use_limit_to_prove:
             #ifdef DBG
                 printf("prove_method\n");
@@ -217,9 +308,10 @@ void printtree(struct ast *root,FILE *fp)
                          break;
                     }
                     fprintf(fp,"\n\tPROOF.FSeqLimitDef ( ");
-                    action_stack++;
+                    //action_stack++;
                     
                     printtree(root->r,fp);
+                    
             }
                else 
               {
@@ -235,19 +327,20 @@ void printtree(struct ast *root,FILE *fp)
             // printf("%d",root->r->nodetype);
             if(root->r!=NULL && root->r->nodetype == leaf_CONTINUE_DEF)
             {   // SINCE_CLAUSE + TO_PROVE
-                     fprintf(fp,"PrConclAndProof %d",lineNumber);
+                     fprintf(fp,"PrConclAndProof %d %d",lineNumber, lineEnd);
                     //fprintf(fp,"( line %d-",lineNumber);
-                    if(root->lineNum != NULL){
+                    /*if(root->lineNum != NULL){
                          printtree(root->lineNum,fp);
                     }
                     else {
                          printf("can't find lineNumber in continue");
                          break;
-                    }
+                    }*/
                     fprintf(fp,"\n\tPROOF.Continuity_x0_Def ( ");
-                    action_stack++;
+                    //action_stack++;
                     
                     printtree(root->r,fp);
+                    
             }
                else 
               {
@@ -263,19 +356,20 @@ void printtree(struct ast *root,FILE *fp)
             // printf("%d",root->r->nodetype);
             if(root->r!=NULL && root->r->nodetype == leaf_UC_DEF)
             {   // SINCE_CLAUSE + TO_PROVE
-                    fprintf(fp,"PrConclAndProof %d",lineNumber);
+                    fprintf(fp,"PrConclAndProof %d %d",lineNumber, lineEnd);
                     //fprintf(fp,"( line %d-",lineNumber);
-                    if(root->lineNum != NULL){
+                    /*if(root->lineNum != NULL){
                          printtree(root->lineNum,fp);
                     }
                     else {
                          printf("can't find lineNumber in uc ");
                          break;
-                    }
+                    }*/
                     fprintf(fp,"\n\tPROOF.UContinuity_Def ( ");
-                    action_stack++;
+                    //action_stack++;
                     
                     printtree(root->r,fp);
+                    
             }
                else 
               {
@@ -291,16 +385,7 @@ void printtree(struct ast *root,FILE *fp)
             #endif
             
             break;
-          case point_continue:
-            #ifdef DBG
-                printf("point_continue\n");
-            #endif
-            fprintf(fp,"PBinPred PROP.continue (");
-            printtree(root->l,fp);
-            fprintf(fp,") (");
-            printtree(root->r,fp);
-            fprintf(fp,")");
-            break;
+          
 
           default:
             break;
@@ -389,7 +474,52 @@ void printtree(struct ast *root,FILE *fp)
             #ifdef DBG
                 printf("math_equation\n");
             #endif
-            
+            if(root->len == math_equation_monoinc){
+                fprintf(fp,"(PUnPred PROP.MonoInc ");
+                
+                printtree(root->l,fp);
+                
+                fprintf(fp,")");
+                break;
+            }
+            else if(root->len == math_equation_monodec){
+                fprintf(fp,"(PUnPred PROP.MonoDec ");
+                printtree(root->l,fp);
+                fprintf(fp,")");
+                break;
+            }
+            if(root->len == math_equation_bound_above ){
+                fprintf(fp,"(PBinPred PROP.BoundedAboveBy ");
+                printtree(root->r,fp);
+                printtree(root->l,fp);
+                fprintf(fp,")");
+                break;
+            }
+            else if(root->len == math_equation_bound_below){
+                fprintf(fp,"(PBinPred PROP.BoundedBelowBy ");
+                printtree(root->r,fp);
+                printtree(root->l,fp);
+                fprintf(fp,")");
+                break;
+            }
+            if(root->len == math_equation_impl){
+                fprintf(fp,"(PBinOp PROP.CImpl ");
+                printtree(root->l,fp);
+                printtree(root->r,fp);
+                fprintf(fp,")");
+                break;
+            }
+            if(root->len == math_equation_have_bound_above){
+                fprintf(fp,"(PUnPred PROP.BoundedAbove  ");
+                printtree(root->l,fp);
+                fprintf(fp,")");
+                break;
+            }else if(root->len == math_equation_have_bound_below){
+                fprintf(fp,"(PUnPred PROP.BoundedBelow  ");
+                printtree(root->l,fp);
+                fprintf(fp,")");
+                break;
+            }
             if(root->len==math_equation_math1||root->len==math_equation_math2)
             {
                 //fprintf(fp,"math_equation");
@@ -406,8 +536,10 @@ void printtree(struct ast *root,FILE *fp)
                 break;
             }
             else if(root->len==math_equation_interval1||root->len==math_equation_interval2)
-            {
+            {   
+                fprintf(fp,"(");
                 printtree(root->l,fp);
+                fprintf(fp,")");
                 
                 break;
             }
@@ -439,7 +571,9 @@ void printtree(struct ast *root,FILE *fp)
                     fprintf(fp,")");
                     continue_var -- ;
                 }
-            }if(root->len==math_equation_exists){
+                break;
+            } 
+            else if(root->len==math_equation_exists){
                 con_var = root->l;
                 while(1)
                 {
@@ -461,9 +595,98 @@ void printtree(struct ast *root,FILE *fp)
                     fprintf(fp,")");
                     continue_var -- ;
                 }
+                break;
+            }
+            else if(root->len == math_equation_exists_sets){
+                fprintf(fp,"(PQuant PROP.QExists \"");
+                fprintf(fp,"%c",root->l->l->l->addr[0]);
+                fprintf(fp,"\" ");
+                printtree(root->r,fp);
+                fprintf(fp,")");
+            }
+            else if(root->len == math_equation_forall_sets){
+                fprintf(fp,"(PQuant PROP.QForall \"");
+                fprintf(fp,"%c",root->l->l->l->addr[0]);
+                fprintf(fp,"\" ");
+                printtree(root->r,fp);
+                fprintf(fp,")");
+            }
+            else if(root->len == math_equation_in_var_continue || math_equation_in_interval_continue){
+                fprintf(fp,"(PBinPred PROP.ContinueOn ");
+                fprintf(fp,"(TBinder TERM.LambdaB \"");
+                for(int i = 0;i<root->l->r->l->len-1;++i)
+                    if(root->l->r->l->addr[i])
+                    fprintf(fp,"%c",root->l->r->l->addr[i]);
+                fprintf(fp,"\"");
+
+                fprintf(fp,"(TApply ");
+                printtree(root->l->l,fp);
+                printtree(root->l->r,fp);
+                fprintf(fp," ))");
+                printtree(root->r,fp);
+                fprintf(fp,")");
+                break;
+            }
+            else if(root->len == math_equation_in_var_ucontinue || math_equation_in_interval_ucontinue){
+                fprintf(fp,"(PBinPred PROP.UContinueOn ");
+                fprintf(fp,"(TBinder TERM.LambdaB \"");
+                for(int i = 0;i<root->l->r->l->len-1;++i)
+                    if(root->l->r->l->addr[i])
+                    fprintf(fp,"%c",root->l->r->l->addr[i]);
+                fprintf(fp,"\"");
+
+                fprintf(fp,"(TApply ");
+                printtree(root->l->l,fp);
+                printtree(root->l->r,fp);
+                fprintf(fp," ))");
+                printtree(root->r,fp);
+                fprintf(fp,")");
+                break;
+            }
+            else if(root->len == math_equation_continue ){
+                fprintf(fp,"(PUnPred PROP.Continue ");
+                fprintf(fp,"(TBinder TERM.LambdaB \"");
+                for(int i = 0;i<root->l->r->l->len-1;++i)
+                    if(root->l->r->l->addr[i])
+                    fprintf(fp,"%c",root->l->r->l->addr[i]);
+                fprintf(fp,"\"");
+
+                fprintf(fp,"(TApply ");
+                printtree(root->l->l,fp);
+                printtree(root->l->r,fp);
+                fprintf(fp," )))");
+                break;
+            }
+            else if(root->len == math_equation_ucontinue ){
+                fprintf(fp,"(PUnPred PROP.UContinue ");
+                fprintf(fp,"(TBinder TERM.LambdaB \"");
+                for(int i = 0;i<root->l->r->l->len-1;++i)
+                    if(root->l->r->l->addr[i])
+                    fprintf(fp,"%c",root->l->r->l->addr[i]);
+                fprintf(fp,"\"");
+
+                fprintf(fp,"(TApply ");
+                printtree(root->l->l,fp);
+                printtree(root->l->r,fp);
+                fprintf(fp," )))");
+                break;
+            }
+            else if(root->len == math_equation_monoinc){
+                fprintf(fp,"(PUnPred PROP.MonoInc ");
+                printf("start \n");
+                printtree(root->l,fp);
+                printf("end\n");
+                fprintf(fp,")");
+                break;
+            }
+            else if(root->len == math_equation_monodec){
+                fprintf(fp,"(PUnPred PROP.MonoDec ");
+                printtree(root->l,fp);
+                fprintf(fp,")");
+                break;
             }
             else break;
-        
+            break;
         case nt_CONTINUED_EQUATION:
             #ifdef DBG
                 printf("cont_equation\n");
@@ -689,6 +912,22 @@ void printtree(struct ast *root,FILE *fp)
                 fprintf(fp,"%c",root->addr[i]);
             fprintf(fp,"\" )");
             break;
+        case leaf_seq_var:
+            #ifdef DBG
+                printf("seq_var\n");
+            #endif
+            if(root == NULL) {break;}
+            fprintf(fp,"(TApply (TVar \"");
+            // printf("%d",root->l->len);
+            // printf("%c",root->l->addr[root->l->len-2]);
+            // puts(root->addr);
+            fprintf(fp,"%c",root->addr[0]);
+            fprintf(fp," \" ) (TVar \"");
+            for(int i = 1;i<root->len-1;++i)
+                if(root->addr[i])
+                fprintf(fp,"%c",root->addr[i]);
+            fprintf(fp,"\" ))");
+            break;
         case ntl_TPinfty:
         case ntl_TNinfty:
         case ntl_TVAR:
@@ -766,6 +1005,14 @@ void printtree(struct ast *root,FILE *fp)
                 printf("cos\n");
             #endif
             fprintf(fp,"(TUnOp TERM.RCos (");
+            printtree(root->l,fp);
+            fprintf(fp,"))");
+            break;
+          case Expr_tsup:
+            #ifdef DBG
+                printf("sup\n");
+            #endif
+            fprintf(fp,"(TUnOp TERM.RSup (");
             printtree(root->l,fp);
             fprintf(fp,"))");
             break;
@@ -988,6 +1235,14 @@ void printtree(struct ast *root,FILE *fp)
             printtree(root->l,fp);
             fprintf(fp,")");
             break;
+          case Expr_seq_sets:
+            #ifdef DBG
+                printf("seq_sets expression\n");
+            #endif
+            fprintf(fp,"(TVar \"");
+            fprintf(fp,"%c",root->l->l->addr[0]);
+            fprintf(fp,"\")");
+            break;
           default:
             break;
           }
@@ -1017,6 +1272,15 @@ void printtree(struct ast *root,FILE *fp)
                     printtree(root->l,fp);
                     fprintf(fp,"\n");
                     printtree(root->r,fp);
+                    break;
+                case Since_clause_because:
+                    since_cache = root;
+                    fprintf(fp,"PrPoseWithoutProof %d %d (PROOF.FCausalInfer (\n\t",lineNumber,lineEnd);
+                    
+                    printtree(root->l,fp);
+                    
+                    fprintf(fp,")) \n\t");
+                    
                     break;
                 case Since_clause_math_equation:
                     since_cache = root; 
@@ -1066,6 +1330,7 @@ void printtree(struct ast *root,FILE *fp)
                       fprintf(fp,"%c",root->l->l->addr[i]);
                     fprintf (fp,"\" )) \n\t");
                     break;
+                
                 case Since_clause_same:
                     
                     if(since_cache == NULL)
@@ -1151,8 +1416,18 @@ void printtree(struct ast *root,FILE *fp)
                     break;
                     case Knowledge_KAGaverage:
                     fprintf(fp,"PROOF.FAGAverage");
+                    break;
                     case Knowledge_FSqueeze:
                     fprintf(fp,"PROOF.FSqueezeTheorem");
+                    break;
+                    case Knowledge_Supre_def:
+                    fprintf(fp,"(PROOF.FDefinition PROOF.Supremum)");
+                    break;
+                    case Knowledge_Lim_def:
+                    fprintf(fp,"(PROOF.FDefinition PROOF.SeqLimit)");
+                    break;
+                    case Knowledge_Supre_the :
+                    fprintf(fp,"(PROOF.FTheorem PROOF.SupremumAndInfimum nil)");
                     break;
                     case Knowledge_Math1:
                     case Knowledge_Math2:
@@ -1311,24 +1586,21 @@ int strToNum(char *str)
 	return tmp;
 }
 
-void add_lineNum()
+void add_lineNum(char fileName[], char tempFileName[], FILE *fp)
 {
-  int cnt=0;
-  
-  char s1[1500],s2[1550];
-  FILE *fp1,*fp2;
-  fp1=fopen("testin.md","r");
-  if(fp1!=NULL){
-	fp2=fopen("testinf.md","w");
-	while(!feof(fp1)){
-	  if(fgets(s1,sizeof(s1)-1,fp1)==NULL)continue;
-      if(s1[0]=='\n'||s1[0]=='\r') continue;
-	  sprintf(s2,"%d. %s",++cnt,s1);
-	  fputs(s2,fp2);
+  int cnt = 0;
+  char s1[1500], s2[1550];
+  FILE *fp1, *fp2;
+  fp1 = fopen(fileName, "r");
+  if (fp1 != NULL){
+	fp2 = fopen(tempFileName, "w");
+	while (!feof(fp1)){
+	  if (fgets(s1, sizeof(s1) - 1, fp1) == NULL) continue;
+      if (s1[0] == '\n' || s1[0] == '\r') continue;
+	  sprintf(s2, "%d. %s", ++cnt, s1);
+	  fputs(s2, fp2);
 	}
-	fclose(fp2);
 	fclose(fp1);
+    fclose(fp2);
   }
-  
-
 }
