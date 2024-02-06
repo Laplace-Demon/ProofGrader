@@ -8,16 +8,23 @@
 #include "flex.h"
 #include "func.h"
 
-int theoremsNumber;
-const char* entryName[] = {"theoremFormat", "theoremContent", "saturationAllowed", "verificationAllowed", "singleStepVerification", "explicitReference", "multipleStepVerification", "automationRule", "keyWords"};
+int theoremNumber = 0;
+const char* entryName[] = {"theoremFormat", "theoremContent", "saturationAllowed", "verificationAllowed", "singleStepVerification", "explicitReference", "multipleStepVerification", "automationRule", "categories"};
 struct Theorem {
     char* theoremName;
     char* theoremFormat;
     char* theoremContent;
 	bool saturationAllowed, verificationAllowed, singleStepVerification, explicitReference, multipleStepVerification;
-    char** keyWords;
-    int keyWordsNumber;
+    char** categories;
+    int categoryNumber;
 } theorems[1000];
+
+int categoryNumber = 0;
+struct Category {
+    int theoremNumber, cnt;
+    char* categoryName;
+    char** theoremNames;
+} categories[1000];
 
 cJSON *getJsonObject(FILE *file) {
     fseek(file, 0, SEEK_END);
@@ -94,12 +101,25 @@ struct Theorem parseTheorem(cJSON *json) {
             for (cJSON* keyWord = entry->child; keyWord != NULL; keyWord = keyWord->next, cnt++) {
                 if (!cJSON_IsString(keyWord)) errorParsingEntry(entry->string, json->string);
             }
-            theorem.keyWords = malloc(cnt * sizeof (char*));
-            theorem.keyWordsNumber = cnt;
+            theorem.categories = malloc(cnt * sizeof (char*));
+            theorem.categoryNumber = cnt;
             cnt = 0;
             for (cJSON* keyWord = entry->child; keyWord != NULL; keyWord = keyWord->next, cnt++) {
-                theorem.keyWords[cnt] = malloc((strlen(keyWord->valuestring) + 1) * sizeof (char));
-                strcpy(theorem.keyWords[cnt], keyWord->valuestring);
+                theorem.categories[cnt] = malloc((strlen(keyWord->valuestring) + 1) * sizeof (char));
+                strcpy(theorem.categories[cnt], keyWord->valuestring);
+                int pos;
+                for (pos = 0; pos < categoryNumber; ++pos) {
+                    if (strcmp(theorem.categories[cnt], categories[pos].categoryName) == 0) {
+                        categories[pos].theoremNumber += 1;
+                        break;
+                    }
+                }
+                if (pos == categoryNumber) {
+                    categoryNumber += 1;
+                    categories[pos].categoryName = malloc((strlen(keyWord->valuestring) + 1) * sizeof (char));
+                    strcpy(categories[pos].categoryName, keyWord->valuestring);
+                    categories[pos].theoremNumber = 1;
+                }
             }
         }
     }
@@ -107,28 +127,59 @@ struct Theorem parseTheorem(cJSON *json) {
 }
 
 void parseJson(cJSON *json) {
-    for (cJSON* theorem = json->child; theorem != NULL; theorem = theorem->next, theoremsNumber++) {
-        theorems[theoremsNumber] = parseTheorem(theorem);
+    for (cJSON* theorem = json->child; theorem != NULL; theorem = theorem->next, theoremNumber++) {
+        theorems[theoremNumber] = parseTheorem(theorem);
+    }
+    for (int i = 0; i < categoryNumber; ++i) {
+        categories[i].theoremNames = malloc(categories[i].theoremNumber * sizeof (char*));
+        categories[i].cnt = 0;
+        printf("%d\n", categories[i].theoremNumber);
+    }
+    for (int i = 0; i < theoremNumber; ++i) {
+        for (int j = 0; j < theorems[i].categoryNumber; ++j) {
+            for (int pos = 0; pos < categoryNumber; ++pos) {
+                if (strcmp(categories[pos].categoryName, theorems[i].categories[j]) == 0) {
+                    categories[pos].theoremNames[categories[pos].cnt] = malloc((strlen(theorems[i].theoremName) + 1) * sizeof (char));
+                    strcpy(categories[pos].theoremNames[categories[pos].cnt], theorems[i].theoremName);
+                    categories[pos].cnt += 1;
+                }
+            }
+        }
     }
 }
 
 void printHeader(FILE *file) {
-    fprintf(file, "From lib.lib Require Import ExplicitName.\n");
-    fprintf(file, "From lib.lib Require Import Lang.\n\n");
+    fprintf(file, "From lib Require Import ExplicitName.\n");
+    fprintf(file, "From lib Require Import Lang.\n");
     fprintf(file, "Require Import String.\n");
     fprintf(file, "Require Import ZArith.\n");
     fprintf(file, "Require Import List.\n");
     fprintf(file, "Local Open Scope Z.\n");
     fprintf(file, "Local Open Scope string.\n");
     fprintf(file, "Local Open Scope list.\n\n");
-    fprintf(file, "(* Definitions *)\n");
+    fprintf(file, "(* Definitions *)\n\n");
     fprintf(file, "Definition theorem : Type := (list prop_pattern) * prop_pattern.\n\n");
+}
+
+void printTail(FILE *file) {
+    for (int i = 0; i < categoryNumber; ++i) {
+        fprintf(file, "Definition %s: list theorem :=", categories[i].categoryName);
+        for (int j = 0; j < categories[i].theoremNumber; ++j) {
+            fprintf(file, " %s ::", categories[i].theoremNames[j]);
+        }
+        fprintf(file, " nil.\n\n");
+    }
+    fprintf(file, "Definition all_theorems: list theorem :=");
+    for (int i = 0; i < categoryNumber - 1; ++i) {
+        fprintf(file, " %s ++", categories[i].categoryName);
+    }
+    fprintf(file, " %s.\n\n", categories[categoryNumber - 1].categoryName);
 }
 
 void convertAndPrintToCoq(FILE *file) {
     printHeader(file);
     
-    for (int i = 0; i < theoremsNumber; ++i) {
+    for (int i = 0; i < theoremNumber; ++i) {
         int parseStatus;
         YY_BUFFER_STATE bp;
         bp = yy_scan_string(theorems[i].theoremContent);
@@ -147,6 +198,8 @@ void convertAndPrintToCoq(FILE *file) {
 
         yy_delete_buffer(bp);
     }
+
+    printTail(file);
 
     fclose(file);
     printf("Successfully print to Coq.\n");
@@ -180,6 +233,8 @@ int main(int argc, char **argv) {
     convertAndPrintToCoq(outputFile);
 
     cJSON_Delete(json);
+
+    fflush(stdout);
 
     return 0;
 }

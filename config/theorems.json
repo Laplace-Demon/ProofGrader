@@ -10,7 +10,7 @@
 		"multipleStepVerification": true,
 		"automationRule":
 		{},
-		"keyWords": ["Limit", "Definition"]
+		"categories": ["SeqLimit_definitions"]
 	},
 	"LimitDef_statement_fun_pos_infty":
 	{
@@ -23,7 +23,7 @@
 		"multipleStepVerification": true,
 		"automationRule":
 		{},
-		"keyWords": ["Limit", "Definition"]
+		"categories": ["SeqLimit_definitions"]
 	},
 	"LimitDef_statement_fun_neg_infty":
 	{
@@ -36,7 +36,7 @@
 		"multipleStepVerification": true,
 		"automationRule":
 		{},
-		"keyWords": ["Limit", "Definition"]
+		"categories": ["SeqLimit_definitions"]
 	},
 	"Continuity_x0_statement":
 	{
@@ -49,7 +49,7 @@
 		"multipleStepVerification": true,
 		"automationRule":
 		{},
-		"keyWords": ["Limit", "Definition"]
+		"categories": ["Continuity_definitions"]
 	},
 	"UContinuity_statement":
 	{
@@ -62,7 +62,7 @@
 		"multipleStepVerification": true,
 		"automationRule":
 		{},
-		"keyWords": ["Limit", "Definition"]
+		"categories": ["UContinuity_definitions"]
 	},
 	"Supremum_statement_fun_epsilon_delta":
 	{
@@ -75,7 +75,7 @@
 		"multipleStepVerification": true,
 		"automationRule":
 		{},
-		"keyWords": ["Limit", "Definition"]
+		"categories": ["Supremum_definitions"]
 	},
 	"UpperBound_statement_fun":
 	{
@@ -88,7 +88,7 @@
 		"multipleStepVerification": true,
 		"automationRule":
 		{},
-		"keyWords": ["Limit", "Definition"]
+		"categories": ["UpperBound_definitions"]
 	},
 	"MonoInc_statement":
 	{
@@ -101,7 +101,7 @@
 		"multipleStepVerification": true,
 		"automationRule":
 		{},
-		"keyWords": ["Limit", "Definition"]
+		"categories": ["MonoInc_definitions"]
 	},
 	"CauchySeq_statement":
 	{
@@ -114,7 +114,7 @@
 		"multipleStepVerification": true,
 		"automationRule":
 		{},
-		"keyWords": ["Limit", "Definition"]
+		"categories": ["CauchySeq_definitions"]
 	},
 	"SupremumAndInfimum_theorem":
 	{
@@ -127,7 +127,7 @@
 		"multipleStepVerification": true,
 		"automationRule":
 		{},
-		"keyWords": ["Limit", "Definition"]
+		"categories": ["SupremumAndInfimum_theorems"]
 	},
 	"causal_inference_monoinc":
 	{
@@ -140,7 +140,7 @@
 		"multipleStepVerification": true,
 		"automationRule":
 		{},
-		"keyWords": ["Limit", "Definition"]
+		"categories": ["causal_inference_rules"]
 	},
 	"causal_inference_boundedaboveby":
 	{
@@ -153,7 +153,7 @@
 		"multipleStepVerification": true,
 		"automationRule":
 		{},
-		"keyWords": ["Limit", "Definition"]
+		"categories": ["causal_inference_rules"]
 	},
 	"causal_inference_cauchyseqbound":
 	{
@@ -166,6 +166,6 @@
 		"multipleStepVerification": true,
 		"automationRule":
 		{},
-		"keyWords": ["Limit", "Definition"]
+		"categories": ["causal_inference_rules"]
 	}
 }

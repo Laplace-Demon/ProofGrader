@@ -1,6 +1,5 @@
-From lib.lib Require Import ExplicitName.
-From lib.lib Require Import Lang.
-
+From lib Require Import ExplicitName.
+From lib Require Import Lang.
 Require Import String.
 Require Import ZArith.
 Require Import List.
@@ -9,6 +8,7 @@ Local Open Scope string.
 Local Open Scope list.
 
 (* Definitions *)
+
 Definition theorem : Type := (list prop_pattern) * prop_pattern.
 
 Definition LimitDef_statement_fun_x: theorem :=
@@ -62,4 +62,24 @@ Definition causal_inference_boundedaboveby: theorem :=
 Definition causal_inference_cauchyseqbound: theorem :=
   ((PPUnPred PROP.CauchySeq (TPTVar "a") )  :: nil,
   (PPUnPred PROP.Bounded (TPTVar "a") ) ).
+
+Definition SeqLimit_definitions: list theorem := LimitDef_statement_fun_x :: LimitDef_statement_fun_pos_infty :: LimitDef_statement_fun_neg_infty :: nil.
+
+Definition Continuity_definitions: list theorem := Continuity_x0_statement :: nil.
+
+Definition UContinuity_definitions: list theorem := UContinuity_statement :: nil.
+
+Definition Supremum_definitions: list theorem := Supremum_statement_fun_epsilon_delta :: nil.
+
+Definition UpperBound_definitions: list theorem := UpperBound_statement_fun :: nil.
+
+Definition MonoInc_definitions: list theorem := MonoInc_statement :: nil.
+
+Definition CauchySeq_definitions: list theorem := CauchySeq_statement :: nil.
+
+Definition SupremumAndInfimum_theorems: list theorem := SupremumAndInfimum_theorem :: nil.
+
+Definition causal_inference_rules: list theorem := causal_inference_monoinc :: causal_inference_boundedaboveby :: causal_inference_cauchyseqbound :: nil.
+
+Definition all_theorems: list theorem := SeqLimit_definitions ++ Continuity_definitions ++ UContinuity_definitions ++ Supremum_definitions ++ UpperBound_definitions ++ MonoInc_definitions ++ CauchySeq_definitions ++ SupremumAndInfimum_theorems ++ causal_inference_rules.
 
