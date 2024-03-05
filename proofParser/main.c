@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
 		const char* output_file = s;
 		fp = fopen(output_file,"w");
 	}
-	fprintf(fp,"From MParser Require Import ExplicitName.\nFrom MParser Require Import Lang.\nFrom MParser Require Import Poly.\nFrom MParser Require Import Solver.\nFrom MParser Require Import Elaborator.\nFrom MParser Require Import Checker.\nRequire Import String.\nRequire Import ZArith.\nRequire Import List.\nLocal Open Scope Z.\nLocal Open Scope string.\nLocal Open Scope list.\nImport ListNotations.\n");
+	fprintf(fp,"Require Import ExplicitName.\nRequire Import Lang.\nRequire Import Poly.\nRequire Import Solver.\nRequire Import Elaborator.\nRequire Import Checker.\nRequire Import String.\nRequire Import ZArith.\nRequire Import List.\nLocal Open Scope Z.\nLocal Open Scope string.\nLocal Open Scope list.\nImport ListNotations.\n");
 	extern struct ast* root;
     
 	printtree(root,fp);

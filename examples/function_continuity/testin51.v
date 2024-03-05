@@ -1,9 +1,9 @@
-From MParser Require Import ExplicitName.
-From MParser Require Import Lang.
-From MParser Require Import Solver.
-From MParser Require Import Poly.
-From MParser Require Import Elaborator.
-From MParser Require Import Checker.
+Require Import ExplicitName.
+Require Import Lang.
+Require Import Solver.
+Require Import Poly.
+Require Import Elaborator.
+Require Import Checker.
 Require Import String.
 Require Import ZArith.
 Require Import List.

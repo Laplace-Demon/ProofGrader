@@ -1,7 +1,7 @@
-From MParser.lib Require Import Lang.
-From MParser.lib Require Import Theorems.
-From MParser.lib Require Import Poly.
-From MParser.lib Require Import Solver.
+From lib Require Import Lang.
+From lib Require Import Theorems.
+From lib Require Import Poly.
+From lib Require Import Solver.
 Require Import String.
 Require Import ZArith.
 Require Import List.

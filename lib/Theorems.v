@@ -1,5 +1,5 @@
-From MParser.lib Require Import ExplicitName.
-From MParser.lib Require Import Lang.
+From lib Require Import ExplicitName.
+From lib Require Import Lang.
 
 Require Import String.
 Require Import ZArith.
