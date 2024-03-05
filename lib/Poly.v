@@ -1,5 +1,5 @@
-From lib Require Import Lang.
-From lib Require Import ExplicitName.
+From MParser.lib Require Import Lang.
+From MParser.lib Require Import ExplicitName.
 
 Require Import Datatypes.
 Require Import String.
@@ -962,6 +962,17 @@ Definition term_extract_tri (tm : term) : option term :=
   | _, _ => None
   end.
 
+Fixpoint term_contain_tri (tm : term) : bool :=
+  match tm with
+  | TUnOp u tm1 =>
+      match u with
+      | TERM.RSin | TERM.RCos => true
+      | _ => term_contain_tri tm1
+      end
+  | TBinOp _ tm1 tm2 => orb (term_contain_tri tm1) (term_contain_tri tm2)
+  | _ => false
+  end.
+
 Definition term_is_min (tm : term) : bool :=
   match tm with
   | TBinOp TERM.RMin _ _ => true
@@ -1036,7 +1047,7 @@ Definition tri_pair : Type := (TERM.UnOp * term).
 
 Definition tri_pair_eqb (tp1 tp2 : tri_pair) : bool :=
   match tp1, tp2 with
-  | (b1, t1), (b2, t2) => andb (TERM.UnOp_eqb b1 b2) (term_eqb t1 t2) (* term_eqb 的判断太弱了 *)
+  | (b1, t1), (b2, t2) => andb (TERM.UnOp_eqb b1 b2) (SYMBOLIC_CHECKER.test_eqn_R t1 t2)
   end.
 
 Definition tri_value_map := tri_pair -> option term.
@@ -1047,12 +1058,12 @@ Definition update_tri_value_map (tp : tri_pair) (v : term) (m : tri_value_map) :
   fun tp' => if tri_pair_eqb tp tp' then Some v else m tp'.
 
 Definition tri_keys :=
-  (TERM.RSin, TNum 0) :: (TERM.RSin, TBinOp TERM.RDiv (TConst TERM.RPi) (TNum 6)) :: (TERM.RSin, TBinOp TERM.RDiv (TConst TERM.RPi) (TNum 4)) :: (TERM.RSin, TBinOp TERM.RDiv (TConst TERM.RPi) (TNum 3)) :: (TERM.RSin, TBinOp TERM.RDiv (TConst TERM.RPi) (TNum 2)) ::
-  (TERM.RCos, TNum 0) :: (TERM.RCos, TBinOp TERM.RDiv (TConst TERM.RPi) (TNum 6)) :: (TERM.RCos, TBinOp TERM.RDiv (TConst TERM.RPi) (TNum 4)) :: (TERM.RCos, TBinOp TERM.RDiv (TConst TERM.RPi) (TNum 3)) :: (TERM.RCos, TBinOp TERM.RDiv (TConst TERM.RPi) (TNum 2)) :: nil.
+  (TERM.RSin, TNum 0) :: (TERM.RSin, TBinOp TERM.RDiv (TConst TERM.RPi) (TNum 6)) :: (TERM.RSin, TBinOp TERM.RDiv (TConst TERM.RPi) (TNum 4)) :: (TERM.RSin, TBinOp TERM.RDiv (TConst TERM.RPi) (TNum 3)) :: (TERM.RSin, TBinOp TERM.RDiv (TConst TERM.RPi) (TNum 2)) :: (TERM.RSin, (TBinOp TERM.RDiv (TBinOp TERM.RMult (TNum 2) (TConst TERM.RPi)) (TNum 3))) ::
+  (TERM.RCos, TNum 0) :: (TERM.RCos, TBinOp TERM.RDiv (TConst TERM.RPi) (TNum 6)) :: (TERM.RCos, TBinOp TERM.RDiv (TConst TERM.RPi) (TNum 4)) :: (TERM.RCos, TBinOp TERM.RDiv (TConst TERM.RPi) (TNum 3)) :: (TERM.RCos, TBinOp TERM.RDiv (TConst TERM.RPi) (TNum 2)) :: (TERM.RCos, (TBinOp TERM.RDiv (TBinOp TERM.RMult (TNum 2) (TConst TERM.RPi)) (TNum 3))) :: nil.
 
 Definition tri_values :=
-  (TNum 0) :: (TBinOp TERM.RDiv (TNum 1) (TNum 2)) :: (TBinOp TERM.RDiv (TBinOp TERM.RSqrt (TNum 2) (TNum 2)) (TNum 2)) :: (TBinOp TERM.RDiv (TBinOp TERM.RSqrt (TNum 2) (TNum 3)) (TNum 2)) :: (TNum 1) ::
-  (TNum 1) :: (TBinOp TERM.RDiv (TBinOp TERM.RSqrt (TNum 2) (TNum 3)) (TNum 2)) :: (TBinOp TERM.RDiv (TBinOp TERM.RSqrt (TNum 2) (TNum 2)) (TNum 2)) :: (TBinOp TERM.RDiv (TNum 1) (TNum 2)) :: (TNum 0) :: nil.
+  (TNum 0) :: (TBinOp TERM.RDiv (TNum 1) (TNum 2)) :: (TBinOp TERM.RDiv (TBinOp TERM.RSqrt (TNum 2) (TNum 2)) (TNum 2)) :: (TBinOp TERM.RDiv (TBinOp TERM.RSqrt (TNum 2) (TNum 3)) (TNum 2)) :: (TNum 1) :: (TBinOp TERM.RDiv (TBinOp TERM.RSqrt (TNum 2) (TNum 3)) (TNum 2)) ::
+  (TNum 1) :: (TBinOp TERM.RDiv (TBinOp TERM.RSqrt (TNum 2) (TNum 3)) (TNum 2)) :: (TBinOp TERM.RDiv (TBinOp TERM.RSqrt (TNum 2) (TNum 2)) (TNum 2)) :: (TBinOp TERM.RDiv (TNum 1) (TNum 2)) :: (TNum 0) :: (TUnOp TERM.RNeg (TBinOp TERM.RDiv (TNum 1) (TNum 2))) :: nil.
 
 Definition tri_table :=
   let fix f (lx : list tri_pair) (ly : list term) :=
@@ -1064,10 +1075,29 @@ Definition tri_table :=
 
 End TRI_TABLE.
 
-Definition tri_calculator (tm : term) : option term :=
+Fixpoint tri_calculator (tm : term) : option term :=
   match tm with
   | TUnOp TERM.RCos tm' => TRI_TABLE.tri_table (TERM.RCos, tm')
   | TUnOp TERM.RSin tm' => TRI_TABLE.tri_table (TERM.RSin, tm')
+  | TUnOp u tm1 =>
+      match tri_calculator tm1 with
+      | Some tm1' => Some (TUnOp u tm1')
+      | None => None
+      end
+  | TBinOp b tm1 tm2 =>
+      match tri_calculator tm1, tri_calculator tm2 with
+      | Some tm1', Some tm2' => Some (TBinOp b tm1' tm2')
+      | Some tm1', None => Some (TBinOp b tm1' tm2)
+      | None, Some tm2' => Some (TBinOp b tm1 tm2')
+      | None, None => None
+      end
+  | TApply tm1 tm2 =>
+      match tri_calculator tm1, tri_calculator tm2 with
+      | Some tm1', Some tm2' => Some (TApply tm1' tm2')
+      | Some tm1', None => Some (TApply tm1' tm2)
+      | None, Some tm2' => Some (TApply tm1 tm2')
+      | None, None => None
+      end
   | _ => None
   end.
 
@@ -1268,11 +1298,7 @@ Fixpoint term_symbolic_simplify (tm : term) : term :=
             else if term_is_const_Pi res1 then TNum 3
             else if term_is_const_E res1 then TNum 2
             else TUnOp u res1
-       | TERM.RSin | TERM.RCos =>
-            match tri_calculator tm with
-            | Some tm' => tm'
-            | None => TUnOp u res1
-            end
+       | TERM.RSin | TERM.RCos => match tri_calculator tm with | Some tm' => tm' | None => tm end
        | _ => TUnOp u res1
        end
   | TBinOp b t1 t2 =>
@@ -1347,11 +1373,7 @@ Fixpoint term_symbolic_simplify' (tm : term) : term :=
             else if term_is_const_Pi res1 then TNum 3
             else if term_is_const_E res1 then TNum 2
             else TUnOp u res1
-       | TERM.RSin | TERM.RCos =>
-            match tri_calculator tm with
-            | Some tm' => tm'
-            | None => TUnOp u res1
-            end
+       | TERM.RSin | TERM.RCos => match tri_calculator tm with | Some tm' => tm' | None => tm end
        | _ => TUnOp u res1
        end
   | TBinOp b t1 t2 =>
@@ -1784,6 +1806,7 @@ Definition poly_binop_eval (b : TERM.BinOp) (t1 t2 : poly.t) : option poly.t :=
   | TERM.RMult => Some (poly.mult t1 t2)
   | TERM.RPlus => Some (poly.plus t1 t2)
   | TERM.RMinus => Some (poly.minus t1 t2)
+  | TERM.RPower => if poly.eqb t2 (poly.plus poly_one poly_one) then Some (poly.mult t1 t1) else None
   | _ => None
   end.
 
@@ -1866,6 +1889,9 @@ Definition rational_le_0 (t0 : rational.t) :bool :=
 
 Definition rational_lt_0 (t0 : rational.t) :bool :=
   rational_is_certain_negative t0.
+
+Definition rational_is_poly (t0 : rational.t): bool :=
+  false.
 
 Definition compare_r_le (t1 t2 : rational.t) : bool :=
   let temp := poly.minus (poly.mult (rational.numerator t2) (rational.denominator t1))
@@ -2171,10 +2197,9 @@ Fixpoint if_ln_domain (t : term) :bool :=
 
 Fixpoint ln_merge (t : term) : term :=
   match t with 
-  | TBinOp TERM.RPlus t1 t2 => ln_plus_l t1 (ln_merge t2)
-  | TBinOp TERM.RMinus t1 t2 => ln_minus_l t1 (ln_merge t2)
+  | TBinOp TERM.RPlus t1 t2 => ln_plus_l (ln_merge t1) (ln_merge t2)
+  | TBinOp TERM.RMinus t1 t2 => ln_minus_l (ln_merge t1) (ln_merge t2)
   | TBinOp TERM.RLim t1 t2 => TBinOp TERM.RLim t1 (ln_merge t2)
-  | TUnOp  TERM.RLn t1 => t
   | TUnOp  TERM.RNeg t1 => neg_ln (ln_merge t1)
   | TUnOp  TERM.SeqLimit t1 => TUnOp TERM.SeqLimit (ln_merge t1)
   | TBinder b x t' => TBinder b x (ln_merge t')

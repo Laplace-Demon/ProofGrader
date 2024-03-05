@@ -16,40 +16,36 @@ gcc (GNU gcc): 11.4.0
 Then run the following commands to build the system:
 
 ```
-make # build the Coq verifier
+make # build the Coq proof checker
 cd proofParser
 make # build the proof parser
 ```
 
-If you want to use our theorem manager,
-
-```
-cd theoremParser
-make
-```
-
 ## Code Structure
 
-* lib/ExplicitName.v: the naming system of verifier 
-* lib/Lang.v: the formal definitions of proof language
-* lib/Poly.v: the solver for polynomials
-* lib/Elaborator.v: the elaborator for proof, which performs static analysis on and modify the proofs  
-* lib/Theorems.v: the database for theorems
-* lib/Checker.v: the solver manager system and checker for proof
-* proofParser: the parser for proofs written in LaTex
-* theoremParser: the parser for theorems stored in JSON format
+* examples: demo examples of ProofGrader
+* lib/ExplicitName.v: naming system of the proof checker 
+* lib/Lang.v: formal definition of the proof language
+* lib/Poly.v: polynomial solver of the proof checker
+* lib/Elaborator.v: static analyzer of the proof checker
+* lib/Theorems.v: theorem database of the proof checker
+* lib/Solver.v: solvers and the solver manager system of the proof checker 
+* lib/Checker.v: the proof checker
+* proofParser: the parser for natural language mathematical proofs written in LaTex
 
+We also have a theoremParser that is able to parse theorems stored in JSON format into the theorem database. For now it has not been made full-fledged apart from some basic theorems, and the default output path is `lib/TestTheorems.v`.
 
-## Demo
+## Proof Parser
 
-You can parse and verify the proof examples by yourself to gain an overview of ProofGrader.
+You can parse a natural language mathematical proof by copying it into proofParser/testin.md and run the following command, proof steps should be separated by English commas ",".
 
 ```
-proofParser/proofParser examples/example_name.md
-# fill in the example_name by markdown file names in the examples folder to run the proof parser
-# compute the check_result in the corresponding Coq file to verify your proof
+cd proofParser
+./proofParser
 ```
 
-You can configure the supported theorems by modifying `config/theorems.json`, the default output path will be `lib/TestTheorems.v`.
+The resulting Coq file will be stored in proofParser/testin.v. Execute the Coq script and evaluate the expression "check_result" to check the result.
 
-And you can also experiment with your own proof in `proofParser/mathProof.md`, though current support for mathematical/proof constructs is limited.
+## Demo Examples
+
+We provide a set of examples to show the capaity of ProofGrader and how its proof language is like. Examples are grouped together by their topic. You can parse and check the proof examples by yourself to gain a basic understanding. 

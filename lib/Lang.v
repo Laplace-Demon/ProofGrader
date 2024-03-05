@@ -1,4 +1,4 @@
-From lib Require Import ExplicitName.
+From MParser.lib Require Import ExplicitName.
 
 Require Import String.
 Require Import ZArith.
@@ -217,6 +217,7 @@ Definition ROrder_modify_strict (o: ROrder): ROrder :=
 
 Inductive UnOp: Type :=
 | Convergent
+| Divergent
 | Continue
 | UContinue
 | BoundedAbove
@@ -281,6 +282,7 @@ Definition ROrder_eqb (o1 o2: ROrder): bool :=
 Definition UnOp_eqb (b1 b2: UnOp): bool :=
   match b1, b2 with
   | Convergent, Convergent => true
+  | Divergent, Divergent => true
   | Continue, Continue => true
   | UContinue, UContinue => true
   | BoundedAbove, BoundedAbove => true
@@ -350,15 +352,16 @@ Inductive term :=
 | TSet (l: list VarName.t) (t: term) (P: prop)
 
 with prop :=
-| PLongOrder (o: PROP.ROrder) (t: term) (P: prop)
+| PLongOrder (o: PROP.ROrder) (t1: term) (P: prop)
 | PUnPred (p: PROP.UnOp) (t1: term)
 | PBinPred (p: PROP.BinOp) (t1 t2: term)
-| PCBinPred (p: PROP.BinOp) (t1 t2: term) (cont: prop_context)
+| PCBinPred (p: PROP.BinOp) (t1 t2: term) (cont: list prop_context)
 | PUnOp (u: PROP.UniConnect) (P: prop)
 | PBinOp (b: PROP.BinConnect) (P Q: prop)
 | PQuant (q: PROP.Quant) (x: VarName.t) (P: prop)
 
 with prop_context :=
+| CPeriodicFun (t1 : term)
 | CEvenFun
 | CLimPlus (t1 t2 : term)
 | CLimMult (t1 t2 : term)
@@ -391,7 +394,7 @@ with freely_occurs_in_prop (P: prop): list VarName.t :=
   | PLongOrder o t P => freely_occurs_in_term t ++ freely_occurs_in_prop P
   | PUnPred u t1 => freely_occurs_in_term t1
   | PBinPred b t1 t2 => freely_occurs_in_term t1 ++ freely_occurs_in_term t2
-  | PCBinPred b t1 t2 cont => freely_occurs_in_term t1 ++ freely_occurs_in_term t2 ++ freely_occurs_in_prop_cont cont
+  | PCBinPred b t1 t2 cont => freely_occurs_in_term t1 ++ freely_occurs_in_term t2 ++ concat (map freely_occurs_in_prop_cont cont) 
   | PUnOp u P1 => freely_occurs_in_prop P1
   | PBinOp b P1 P2 => freely_occurs_in_prop P1 ++ freely_occurs_in_prop P2
   | PQuant q x P1 => filter (fun x0 => negb (VarName.eqb x0 x)) (freely_occurs_in_prop P1)
@@ -399,6 +402,7 @@ with freely_occurs_in_prop (P: prop): list VarName.t :=
 
 with freely_occurs_in_prop_cont (cont : prop_context) : list VarName.t :=
   match cont with
+  | CPeriodicFun t1 => freely_occurs_in_term t1
   | CEvenFun => nil
   | CLimPlus t1 t2 | CLimMult t1 t2 => freely_occurs_in_term t1 ++ freely_occurs_in_term t2
   end.
@@ -450,7 +454,7 @@ with subst_prop (P: prop) (st: subst_task): prop :=
   | PLongOrder o t P => PLongOrder o (subst_term t st) (subst_prop P st)
   | PUnPred u t1 => PUnPred u (subst_term t1 st)
   | PBinPred b t1 t2 => PBinPred b (subst_term t1 st) (subst_term t2 st)
-  | PCBinPred b t1 t2 cont => PCBinPred b (subst_term t1 st) (subst_term t2 st) (subst_prop_cont cont st)
+  | PCBinPred b t1 t2 cont => PCBinPred b (subst_term t1 st) (subst_term t2 st) (map (fun x => subst_prop_cont x st) cont)
   | PUnOp u P1 => PUnOp u (subst_prop P1 st)
   | PBinOp b P1 P2 => PBinOp b (subst_prop P1 st) (subst_prop P2 st)
   | PQuant q x P1 => let st' := VarName.remove x st in
@@ -465,6 +469,7 @@ with subst_prop (P: prop) (st: subst_task): prop :=
 
 with subst_prop_cont (cont: prop_context) (st: subst_task): prop_context :=
   match cont with
+  | CPeriodicFun t1 => CPeriodicFun (subst_term t1 st)
   | CEvenFun => CEvenFun
   | CLimPlus t1 t2 => CLimPlus (subst_term t1 st) (subst_term t2 st)
   | CLimMult t1 t2 => CLimMult (subst_term t1 st) (subst_term t2 st)
@@ -490,15 +495,15 @@ with prop_eqb (P1 P2: prop): bool :=
   | PLongOrder o1 t1 P11, PLongOrder o2 t2 P21 => PROP.ROrder_eqb o1 o2 && term_eqb t1 t2 && prop_eqb P11 P21
   | PUnPred p1 t11, PUnPred p2 t21 => PROP.UnOp_eqb p1 p2 && term_eqb t11 t21
   | PBinPred p1 t11 t12, PBinPred p2 t21 t22 => PROP.BinOp_eqb p1 p2 && term_eqb t11 t21 && term_eqb t12 t22
-  | PCBinPred p1 t11 t12 cont1, PCBinPred p2 t21 t22 cont2 => PROP.BinOp_eqb p1 p2 && term_eqb t11 t21 && term_eqb t12 t22 && prop_cont_eqb cont1 cont2
+  | PCBinPred p1 t11 t12 _, PCBinPred p2 t21 t22 _ => PROP.BinOp_eqb p1 p2 && term_eqb t11 t21 && term_eqb t12 t22
   | PUnOp u1 P1, PUnOp u2 P2 => PROP.UniConnect_eqb u1 u2 && prop_eqb P1 P2
   | PBinOp b1 P1 Q1, PBinOp b2 P2 Q2 => PROP.BinConnect_eqb b1 b2 && prop_eqb P1 P2 && prop_eqb Q1 Q2
   | PQuant q1 x1 P1, PQuant q2 x2 P2 => PROP.Quant_eqb q1 q2 && prop_eqb P1 (subst_prop P2 ((x2, TVar x1) :: nil))
   | _, _ => false
-  end
+  end.
 
-with prop_cont_eqb (c1 c2 :prop_context) : bool :=
-  match c1,c2 with
+Definition prop_cont_eqb (c1 c2: prop_context): bool :=
+  match c1,c2 with 
   | CEvenFun,CEvenFun => true
   | CLimPlus t1 t2,CLimPlus t1' t2' => term_eqb t1 t1' && term_eqb t2 t2'
   | CLimMult t1 t2,CLimMult t1' t2' => term_eqb t1 t1' && term_eqb t2 t2'
@@ -585,10 +590,13 @@ Module PROOF.
 
 Inductive Def : Type :=
 | SeqLimit
+| SeqConvergence
 | Continuity
 | UContinuity
 | UpperBound
 | LowerBound
+| Unique
+| Bounded
 | Supremum
 | Infimum
 | MonoInc
@@ -617,6 +625,7 @@ Inductive Fwd: Type :=
 | FEquTrans (h1: VarName.t)
 | FDeriBothTerms (var: option VarName.t)
 | FTakeLimOnBothTerms (var: VarName.t) (val: term)
+| FSquareBothTerms
 | FSeqLimitDef
 | Continuity_x0_Def
 | UContinuity_Def
@@ -638,6 +647,8 @@ Inductive Act: Type :=
 | AExistVar (x: VarName.t)
 .
 
+(*取什么，在哪取，取完是什么*)
+
 Inductive PoseAct: Type :=
 | APoseVar (x: VarName.t) (l : list prop)
 | APoseProp (p: prop)
@@ -657,7 +668,6 @@ Inductive proof :=
 | PrPosePartialProof (z1 z2: Z) (PrP : PROOF.PoseAct) (pr1 pr2 : proof)
 | PrEndPartialProof 
 .
-
 
 
 Record proof_goal: Type := {
@@ -1132,12 +1142,13 @@ with prop_pattern :=
 | PPLongOrder (o: PROP.ROrder) (t: term_pattern) (P: prop_pattern)
 | PPUnPred (u: PROP.UnOp) (t1: term_pattern)
 | PPBinPred (b: PROP.BinOp) (t1 t2: term_pattern)
-| PPCBinPred (p: PROP.BinOp) (t1 t2: term_pattern) (cont: prop_context_pattern)
+| PPCBinPred (p: PROP.BinOp) (t1 t2: term_pattern) (cont: list prop_context_pattern)
 | PPUnOp (u: PROP.UniConnect) (P: prop_pattern)
 | PPBinOp (b: PROP.BinConnect) (P Q: prop_pattern)
 | PPQuant (q: PROP.Quant) (x: VarName.t) (P: prop_pattern)
 
 with prop_context_pattern :=
+| CPPeriodicFun (t1: term_pattern)
 | CPEvenFun
 | CPLimPlus (t1 t2: term_pattern)
 | CPLimMult (t1 t2: term_pattern)
@@ -1162,7 +1173,7 @@ with p2pp (P: prop) : prop_pattern :=
   | PLongOrder o t P => PPLongOrder o (tm2tmp t) (p2pp P)
   | PUnPred u t1 => PPUnPred u (tm2tmp t1)
   | PBinPred b t1 t2 => PPBinPred b (tm2tmp t1) (tm2tmp t2)
-  | PCBinPred b t1 t2 cont => PPCBinPred b (tm2tmp t1) (tm2tmp t2) (cont2pcontp cont)
+  | PCBinPred b t1 t2 cont => PPCBinPred b (tm2tmp t1) (tm2tmp t2) (map cont2pcontp cont)
   | PUnOp u P => PPUnOp u (p2pp P)
   | PBinOp b P Q => PPBinOp b (p2pp P) (p2pp Q)
   | PQuant q x P => PPQuant q x (p2pp P)
@@ -1170,6 +1181,7 @@ with p2pp (P: prop) : prop_pattern :=
 
 with cont2pcontp (cont: prop_context) :=
   match cont with
+  | CPeriodicFun t1 => CPPeriodicFun (tm2tmp t1)
   | CEvenFun => CPEvenFun
   | CLimPlus t1 t2 => CPLimPlus (tm2tmp t1) (tm2tmp t2)
   | CLimMult t1 t2 => CPLimMult (tm2tmp t1) (tm2tmp t2)
@@ -1194,7 +1206,7 @@ with p2pp_with_var (P: prop) (var: VarName.t) :=
   | PLongOrder o t P => PPLongOrder o (tm2tmp_with_var t var) (p2pp_with_var P var)
   | PUnPred u t1 => PPUnPred u (tm2tmp_with_var t1 var)
   | PBinPred b t1 t2 => PPBinPred b (tm2tmp_with_var t1 var) (tm2tmp_with_var t2 var)
-  | PCBinPred b t1 t2 cont => PPCBinPred b (tm2tmp_with_var t1 var) (tm2tmp_with_var t2 var) (cont2pcontp_with_var cont var)
+  | PCBinPred b t1 t2 cont => PPCBinPred b (tm2tmp_with_var t1 var) (tm2tmp_with_var t2 var) (map (fun x => cont2pcontp_with_var x var) cont)
   | PUnOp u P => PPUnOp u (p2pp_with_var P var)
   | PBinOp b P Q => PPBinOp b (p2pp_with_var P var) (p2pp_with_var Q var)
   | PQuant q x P => PPQuant q x (p2pp_with_var P var)
@@ -1202,6 +1214,7 @@ with p2pp_with_var (P: prop) (var: VarName.t) :=
 
 with cont2pcontp_with_var (cont: prop_context) (var: VarName.t) :=
   match cont with
+  | CPeriodicFun t1 => CPPeriodicFun (tm2tmp_with_var t1 var)
   | CEvenFun => CPEvenFun
   | CLimPlus t1 t2 => CPLimPlus (tm2tmp_with_var t1 var) (tm2tmp_with_var t2 var)
   | CLimMult t1 t2 => CPLimMult (tm2tmp_with_var t1 var) (tm2tmp_with_var t2 var)
@@ -1329,7 +1342,7 @@ with freely_occurs_in_prop_pattern (P: prop_pattern): list VarName.t :=
   | PPLongOrder o t P => freely_occurs_in_term_pattern t ++ freely_occurs_in_prop_pattern P
   | PPUnPred u t1 => freely_occurs_in_term_pattern t1
   | PPBinPred b t1 t2 => freely_occurs_in_term_pattern t1 ++ freely_occurs_in_term_pattern t2
-  | PPCBinPred b t1 t2 cont => freely_occurs_in_term_pattern t1 ++ freely_occurs_in_term_pattern t2 ++ freely_occurs_in_prop_cont_pattern cont
+  | PPCBinPred b t1 t2 cont => freely_occurs_in_term_pattern t1 ++ freely_occurs_in_term_pattern t2 ++ concat (map freely_occurs_in_prop_cont_pattern cont)
   | PPUnOp u P1 => freely_occurs_in_prop_pattern P1
   | PPBinOp b P1 P2 => freely_occurs_in_prop_pattern P1 ++  freely_occurs_in_prop_pattern P2
   | PPQuant q x P1 => filter (fun x0 => negb (VarName.eqb x0 x)) (freely_occurs_in_prop_pattern P1)
@@ -1337,6 +1350,7 @@ with freely_occurs_in_prop_pattern (P: prop_pattern): list VarName.t :=
 
 with freely_occurs_in_prop_cont_pattern (cont: prop_context_pattern): list VarName.t :=
   match cont with
+  | CPPeriodicFun t1 => freely_occurs_in_term_pattern t1
   | CPEvenFun => nil
   | CPLimPlus t1 t2 => (freely_occurs_in_term_pattern t1) ++ (freely_occurs_in_term_pattern t2)
   | CPLimMult t1 t2 => (freely_occurs_in_term_pattern t1) ++ (freely_occurs_in_term_pattern t2)
@@ -1395,7 +1409,7 @@ with pattern_subst_prop (P: prop_pattern) (st: list (TermVarName.t * term)) (st'
   | PPBinPred b t1 t2 =>
       PBinPred b (pattern_subst_term t1 st st') (pattern_subst_term t2 st st')
   | PPCBinPred b t1 t2 cont =>
-      PCBinPred b (pattern_subst_term t1 st st') (pattern_subst_term t2 st st') (pattern_subst_cont cont st st')
+      PCBinPred b (pattern_subst_term t1 st st') (pattern_subst_term t2 st st') (map (fun x => pattern_subst_cont x st st') cont)
   | PPUnOp u P1 =>
       PUnOp u (pattern_subst_prop P1 st st')
   | PPBinOp b P1 P2 =>
@@ -1413,6 +1427,7 @@ with pattern_subst_prop (P: prop_pattern) (st: list (TermVarName.t * term)) (st'
 
 with pattern_subst_cont (cont: prop_context_pattern) (st: list (TermVarName.t * term)) (st': list (VarName.t * term)): prop_context :=
   match cont with
+  | CPPeriodicFun t1 => CPeriodicFun (pattern_subst_term t1 st st')
   | CPEvenFun => CEvenFun
   | CPLimPlus t1 t2 => CLimPlus (pattern_subst_term t1 st st') (pattern_subst_term t2 st st')
   | CPLimMult t1 t2 => CLimMult (pattern_subst_term t1 st st') (pattern_subst_term t2 st st')
@@ -1458,7 +1473,7 @@ with Beta_prop (P: prop) :=
   | PLongOrder o t P1 => PLongOrder o (Beta_term t) (Beta_prop P1)
   | PUnPred u t1 => PUnPred u (Beta_term t1)
   | PBinPred b t1 t2 => PBinPred b (Beta_term t1) (Beta_term t2)
-  | PCBinPred b t1 t2 cont => PCBinPred b (Beta_term t1) (Beta_term t2) (Beta_prop_cont cont)
+  | PCBinPred b t1 t2 cont => PCBinPred b (Beta_term t1) (Beta_term t2) (map Beta_prop_cont cont)
   | PUnOp u P1 => PUnOp u (Beta_prop P1)
   | PBinOp b P1 P2 => PBinOp b (Beta_prop P1) (Beta_prop P2)
   | PQuant q x P1 => PQuant q x (Beta_prop P1)
@@ -1466,6 +1481,7 @@ with Beta_prop (P: prop) :=
 
 with Beta_prop_cont (cont : prop_context) :=
   match cont with
+  | CPeriodicFun t1 => CPeriodicFun (Beta_term t1)
   | CEvenFun => CEvenFun
   | CLimPlus t1 t2 => CLimPlus (Beta_term t1) (Beta_term t2)
   | CLimMult t1 t2 => CLimMult (Beta_term t1) (Beta_term t2)

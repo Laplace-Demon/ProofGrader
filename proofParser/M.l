@@ -144,6 +144,11 @@
     return TVAR;
     }
 
+"\\in" {
+    yylval.a = newast(leaf_belong,yytext,yyleng,NULL,NULL,NULL);
+    return TBELONG;
+}
+
 [2-9]+\.|[1-9][0-9]+\. {
     yylval.a = newast(leaf_line,yytext,yyleng,NULL,NULL,NULL);
     return TLINE;
@@ -152,30 +157,6 @@
 [0-9]+ {
     yylval.a = newast(leaf_num,yytext,yyleng,NULL,NULL,NULL);
     return TNUM;
-}
-
-[A-Za-df-z] {
-    yylval.a = newast(leaf_var,yytext,yyleng,NULL,NULL,NULL);
-    return TVAR;
-}
-
-[A-Za-z]"_"[A-Za-z0-9_{}] {
-    // remove the underline
-    char *tmp = (char*)malloc((yyleng+1) * sizeof(char));
-    tmp[0]=yytext[0];
-    for(int i = 2;i<yyleng;++i){
-        tmp[i-1] = yytext[i];
-    }
-    // for(int i = 0;i<yyleng-1;++i)
-    // { printf("%c",tmp[i]); }
-    yylval.a = newast(leaf_var,tmp,yyleng-1,NULL,NULL,NULL);
-    return TVAR;
-}
-
-"___hyp"[0-9]* {
-    
-    yylval.a = newast(leaf_var,yytext,yyleng,NULL,NULL,NULL);
-    return TVAR;
 }
 
 "+" {
@@ -308,7 +289,7 @@
     return TNinfty;
 }
 
-"\\forall "|"任意" {
+"\\forall "|"任意"|"对于任意" {
     char tmp[] = "forall";
     yylval.a = newast(leaf_forall,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
     return Tforall;
@@ -362,12 +343,12 @@
     yylval.a = newast(leaf_LB2R,yytext,yyleng,NULL,NULL,NULL);
     return LB2R;
 }
-"{"|"\\lbrace" {
+"\\{"|"{"|"\\lbrace" {
     yylval.a = newast(leaf_LB3L,yytext,yyleng,NULL,NULL,NULL);
     return LB3L;
 }
 
-"}"|"\\rbrace" {
+"\\}"|"}"|"\\rbrace" {
     yylval.a = newast(leaf_LB3R,yytext,yyleng,NULL,NULL,NULL);
     return LB3R;
 }
@@ -375,6 +356,12 @@
     char tmp[] = "abs";
     yylval.a = newast(leaf_abs,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
     return ABS;
+}
+
+"\\max" {
+    char tmp[] = "max";
+    yylval.a = newast(leaf_max,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return MAX;
 }
 
 "\\min" {
@@ -419,6 +406,12 @@
     return Tcos;
 }
 
+"\\sup" {
+    char tmp[] = "sup";
+    yylval.a = newast(leaf_SUP,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return Tsup;
+}
+
 "Proof"[\[ \t]*]*[\.\:：]|"证"[：\:] {
     char tmp[] = "proof";
     yylval.a = newast(leaf_proof,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
@@ -440,7 +433,7 @@
 "Assum"|"假定"|"假设"|"设"|[^\[ \t]*]*设 {
     char tmp[] = "assum";
     yylval.a = newast(leaf_assume,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
-    return ASSUM;
+    return SUPPOSE;
 }
 
 "由"|"根据" {
@@ -448,6 +441,7 @@
     yylval.a = newast(leaf_since,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
     return SINCE;
 }
+
 
 "变形得"|"式变形得"|"等价变形得"|"式等价变形得" {
     char tmp[] = "trans";
@@ -472,7 +466,7 @@
     return SAME;
 }
 
-"那么"|"则"|"so"|"then"|"thus"|"得"|"可知"|"可证"|"可得" {
+"那么"|"则"|"so"|"then"|"thus"|"得"|"可知"|"可证"|"可得"|"所以" {
     char tmp[] = "then";
     yylval.a = newast(leaf_then,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
     return THEN;
@@ -510,6 +504,11 @@
     return DERI;
 }
 
+"平方" {
+    yylval.a = newast(leaf_Square,NULL,0,NULL,NULL,NULL);
+    return SQUARE;
+}
+
 "对" {
     yylval.a = newast(leaf_For,NULL,0,NULL,NULL,NULL);
     return FOR;
@@ -519,17 +518,39 @@
     yylval.a = newast(leaf_IN,NULL,0,NULL,NULL,NULL);
     return IN;
 }
+
+"若" {
+    yylval.a = newast(leaf_IF,NULL,0,NULL,NULL,NULL);
+    return IF;
+}
+
+"有" {
+    yylval.a = newast(leaf_HAVE,NULL,0,NULL,NULL,NULL);
+    return HAVE;
+}
+
+"是" {
+    yylval.a = newast(leaf_IS,NULL,0,NULL,NULL,NULL);
+    return IS;
+}
+
 "连续"|"处连续" {
     yylval.a = newast(leaf_CONTINUE,NULL,0,NULL,NULL,NULL);
     return CONTINUE;
 }
+
+"一致连续"|"处一致连续" {
+    yylval.a = newast(leaf_UCONTINUE,NULL,0,NULL,NULL,NULL);
+    return UCONTINUE;
+}
+
 "PoseWithoutProof" {
     char tmp[] = "PoseWithoutProof";
     yylval.a = newast(leaf_PWP,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
     return PWP;
 }
 
-"PoseAndProve" {
+"下面证明"|"PoseAndProve" {
     char tmp[] = "PoseAndProve";
     yylval.a = newast(leaf_PAP,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
     return PAP;
@@ -581,19 +602,85 @@
     return KAGaverage;
 }
 
-"极限定义" {
+"极限定义"|"极限的定义" {
     char tmp[] = "limit_def";
     yylval.a = newast(leaf_LIM_DEF,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
     return LIM_DEF;
 }
 
-"连续定义" {
+"数列收敛的定义"|"收敛的定义" {
+    char tmp[] = "sequence_convergence_def";
+    yylval.a = newast(leaf_SEQ_CONV_DEF,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return SEQ_CONV_DEF;
+}
+
+"连续定义"|"连续的定义"|"函数连续定义"|"函数连续的定义" {
     char tmp[] = "continue_def";
     yylval.a = newast(leaf_CONTINUE_DEF,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
     return CONTINUE_DEF;
 }
 
-"一致连续定义" {
+"有界定义"|"有界的定义" {
+    char tmp[] = "bound_def";
+    yylval.a = newast(leaf_BOUND_DEF ,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return BOUND_DEF;
+}
+
+"上确界定义"|"上确界的定义" {
+    char tmp[] = "supre_def";
+    yylval.a = newast(leaf_SUPRE_DEF ,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return SUPRE_DEF;
+}
+
+"下确界定义"|"下确界的定义" {
+    char tmp[] = "infi_def";
+    yylval.a = newast(leaf_INFI_DEF ,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return INFI_DEF;
+}
+
+"上界" {
+    char tmp[] = "BoundAbove";
+    yylval.a = newast(leaf_BOUND_ABOVE ,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return BOUND_ABOVE;
+}
+
+"下界" {
+    char tmp[] = "BoundBelow";
+    yylval.a = newast(leaf_BOUND_BELOW ,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return BOUND_BELOW;
+}
+
+"界" {
+    char tmp[] = "Bound";
+    yylval.a = newast(leaf_BOUND,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return BOUND;
+}
+
+"收敛" {
+    char tmp[] = "Converge";
+    yylval.a = newast(leaf_CONVERGE,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return CONVERGE;
+}
+
+"发散" {
+    char tmp[] = "Diverge";
+    yylval.a = newast(leaf_DIVERGE,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return DIVERGE;
+}
+
+"唯一"|"是唯一的" {
+    char tmp[] = "Unique";
+    yylval.a = newast(leaf_UNIQUE,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return UNIQUE;
+}
+
+"唯一性定义"|"唯一性的定义" {
+    char tmp[] = "Unique_def";
+    yylval.a = newast(leaf_UNIQUE_DEF,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return UNIQUE_DEF;
+}
+
+"一致连续定义"|"一致连续的定义"|"函数一致连续定义"|"函数一致连续的定义" {
     char tmp[] = "UContinue_def";
     yylval.a = newast(leaf_UC_DEF,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
     return UC_DEF;
@@ -605,6 +692,17 @@
     return FSqueeze;
 }
 
+"确界原理" {
+    char tmp[] = "supre_theorem";
+    yylval.a = newast(leaf_SUPRE_THEOREM ,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return SUPRE_THEOREM;
+}
+
+"单调有界定理" {
+    char tmp[] = "monotone_convergence_theorem";
+    yylval.a = newast(leaf_MONO_CONV_THEOREM ,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return MONO_CONV_THEOREM;
+}
 
 "记作"|"RememberAs"|"Remark" {
     char tmp[] = "Remember";
@@ -637,10 +735,58 @@
     return AUTO_CONC;
 }
 
-"易知"|"易知："|"易知:"|"自然"|"自然可知"|"因此" {
+"易知"|"易知："|"易知:"|"自然"|"自然可知"|"因此"|"我们有"|"显然有"|"同样地"|"我们知道" {
     char tmp[] = "auto_nohint";
     yylval.a = newast(leaf_AUTO_NOHINT,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
     return AUTO_NOHINT;
+}
+
+"即证"|"只需证" {
+    char tmp[] = "auto_bwd_nohint";
+    yylval.a = newast(leaf_AUTO_BWD_NOHINT,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return AUTO_BWD_NOHINT;
+}
+
+"因为" {
+    char tmp[] = "because";
+    yylval.a = newast(leaf_because,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return BECAUSE;
+}
+
+"单增"|"单调递增" {
+    char tmp[] = "MonoInc";
+    yylval.a = newast(leaf_MONOINC,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return MONOINC;
+}
+
+"单减"|"单调递减" {
+    char tmp[] = "MonoDec";
+    yylval.a = newast(leaf_MONODEC,tmp,(sizeof(tmp)/sizeof(char)),NULL,NULL,NULL);
+    return MONODEC;
+}
+
+[A-Za-df-z][A-Za-df-z]* {
+    yylval.a = newast(leaf_var,yytext,yyleng,NULL,NULL,NULL);
+    return TVAR;
+}
+
+[A-Za-z]"_"[A-Za-z0-9_{}] {
+    // remove the underline
+    char *tmp = (char*)malloc((yyleng+1) * sizeof(char));
+    tmp[0]=yytext[0];
+    for(int i = 2;i<yyleng;++i){
+        tmp[i-1] = yytext[i];
+    }
+    // for(int i = 0;i<yyleng-1;++i)
+    // { printf("%c",tmp[i]); }
+    yylval.a = newast(leaf_seq_var,tmp,yyleng-1,NULL,NULL,NULL);
+    return TVAR;
+}
+
+"___hyp"[0-9]* {
+    
+    yylval.a = newast(leaf_var,yytext,yyleng,NULL,NULL,NULL);
+    return TVAR;
 }
 
 
@@ -648,6 +794,8 @@
 
 [1]\. {};
 
-.   {printf("%s",yytext);
+"的" {};
+
+.   {printf("\n%s\n",yytext);
      yyerror("Mystery Character.");}
 %%

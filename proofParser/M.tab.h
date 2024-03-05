@@ -1,8 +1,9 @@
-/* A Bison parser, made by GNU Bison 3.0.4.  */
+/* A Bison parser, made by GNU Bison 3.8.2.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2021 Free Software Foundation,
+   Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -15,7 +16,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -30,6 +31,10 @@
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
+/* DO NOT RELY ON FEATURES THAT ARE NOT DOCUMENTED in the manual,
+   especially those whose name start with YY_ or yy_.  They are
+   private implementation details that can be changed or removed.  */
+
 #ifndef YY_YY_M_TAB_H_INCLUDED
 # define YY_YY_M_TAB_H_INCLUDED
 /* Debug traces.  */
@@ -40,112 +45,141 @@
 extern int yydebug;
 #endif
 
-/* Token type.  */
+/* Token kinds.  */
 #ifndef YYTOKENTYPE
 # define YYTOKENTYPE
   enum yytokentype
   {
-    TCONST = 258,
-    TFUNC = 259,
-    TNUM = 260,
-    TVAR = 261,
-    Tadd = 262,
-    Ttimes = 263,
-    Tdiv = 264,
-    Tminus = 265,
-    Tfrac = 266,
-    Tsqrt = 267,
-    Tsin = 268,
-    Tcos = 269,
-    Tln = 270,
-    Tderi = 271,
-    DERI = 272,
-    BOTH = 273,
-    Teq = 274,
-    Tleq = 275,
-    Tgeq = 276,
-    Tneq = 277,
-    Tequiv = 278,
-    Tlt = 279,
-    Tgt = 280,
-    Deq = 281,
-    Tlim = 282,
-    Tto = 283,
-    Tinfty = 284,
-    TPinfty = 285,
-    TNinfty = 286,
-    GOAL = 287,
-    MATH1 = 288,
-    MATH2 = 289,
-    PROOF = 290,
-    CODEBOX = 291,
-    QED = 292,
-    ASSUM = 293,
-    GIVEN = 294,
-    COMMA = 295,
-    PWP = 296,
-    PAP = 297,
-    CWP = 298,
-    CAP = 299,
-    CS = 300,
-    PS = 301,
-    KASaverage = 302,
-    KSGaverage = 303,
-    KAGaverage = 304,
-    REMEMBER = 305,
-    CONCLUDE = 306,
-    EQUNADD = 307,
-    SINCE = 308,
-    TRANS = 309,
-    THEN = 310,
-    SAME = 311,
-    FOR = 312,
-    LB1L = 313,
-    LB1R = 314,
-    LB2L = 315,
-    LB2R = 316,
-    LB3L = 317,
-    LB3R = 318,
-    ABS = 319,
-    MIN = 320,
-    LCEIL = 321,
-    RCEIL = 322,
-    LFLOOR = 323,
-    RFLOOR = 324,
-    LIM_DEF = 325,
-    TO_PROVE = 326,
-    INTROS = 327,
-    SUPPOSE = 328,
-    SET = 329,
-    AUTO_CONC = 330,
-    AUTO_NOHINT = 331,
-    USE = 332,
-    Tforall = 333,
-    Texists = 334,
-    Tpower = 335,
-    IN = 336,
-    CONTINUE = 337,
-    CONTINUE_DEF = 338,
-    UC_DEF = 339,
-    FSqueeze = 340,
-    TLINE = 341
+    YYEMPTY = -2,
+    YYEOF = 0,                     /* "end of file"  */
+    YYerror = 256,                 /* error  */
+    YYUNDEF = 257,                 /* "invalid token"  */
+    TCONST = 258,                  /* TCONST  */
+    TFUNC = 259,                   /* TFUNC  */
+    TNUM = 260,                    /* TNUM  */
+    TVAR = 261,                    /* TVAR  */
+    Tadd = 262,                    /* Tadd  */
+    Ttimes = 263,                  /* Ttimes  */
+    Tdiv = 264,                    /* Tdiv  */
+    Tminus = 265,                  /* Tminus  */
+    Tfrac = 266,                   /* Tfrac  */
+    Tsqrt = 267,                   /* Tsqrt  */
+    Tsin = 268,                    /* Tsin  */
+    Tcos = 269,                    /* Tcos  */
+    Tsup = 270,                    /* Tsup  */
+    Tln = 271,                     /* Tln  */
+    Tderi = 272,                   /* Tderi  */
+    DERI = 273,                    /* DERI  */
+    SQUARE = 274,                  /* SQUARE  */
+    BOTH = 275,                    /* BOTH  */
+    Teq = 276,                     /* Teq  */
+    Tleq = 277,                    /* Tleq  */
+    Tgeq = 278,                    /* Tgeq  */
+    Tneq = 279,                    /* Tneq  */
+    Tequiv = 280,                  /* Tequiv  */
+    Tlt = 281,                     /* Tlt  */
+    Tgt = 282,                     /* Tgt  */
+    Deq = 283,                     /* Deq  */
+    Tlim = 284,                    /* Tlim  */
+    Tto = 285,                     /* Tto  */
+    Tinfty = 286,                  /* Tinfty  */
+    TPinfty = 287,                 /* TPinfty  */
+    TNinfty = 288,                 /* TNinfty  */
+    GOAL = 289,                    /* GOAL  */
+    MATH1 = 290,                   /* MATH1  */
+    MATH2 = 291,                   /* MATH2  */
+    PROOF = 292,                   /* PROOF  */
+    CODEBOX = 293,                 /* CODEBOX  */
+    QED = 294,                     /* QED  */
+    ASSUM = 295,                   /* ASSUM  */
+    GIVEN = 296,                   /* GIVEN  */
+    COMMA = 297,                   /* COMMA  */
+    PWP = 298,                     /* PWP  */
+    PAP = 299,                     /* PAP  */
+    CWP = 300,                     /* CWP  */
+    CAP = 301,                     /* CAP  */
+    CS = 302,                      /* CS  */
+    PS = 303,                      /* PS  */
+    KASaverage = 304,              /* KASaverage  */
+    KSGaverage = 305,              /* KSGaverage  */
+    KAGaverage = 306,              /* KAGaverage  */
+    REMEMBER = 307,                /* REMEMBER  */
+    CONCLUDE = 308,                /* CONCLUDE  */
+    EQUNADD = 309,                 /* EQUNADD  */
+    SINCE = 310,                   /* SINCE  */
+    TRANS = 311,                   /* TRANS  */
+    THEN = 312,                    /* THEN  */
+    SAME = 313,                    /* SAME  */
+    FOR = 314,                     /* FOR  */
+    LB1L = 315,                    /* LB1L  */
+    LB1R = 316,                    /* LB1R  */
+    LB2L = 317,                    /* LB2L  */
+    LB2R = 318,                    /* LB2R  */
+    LB3L = 319,                    /* LB3L  */
+    LB3R = 320,                    /* LB3R  */
+    ABS = 321,                     /* ABS  */
+    MAX = 322,                     /* MAX  */
+    MIN = 323,                     /* MIN  */
+    LCEIL = 324,                   /* LCEIL  */
+    RCEIL = 325,                   /* RCEIL  */
+    LFLOOR = 326,                  /* LFLOOR  */
+    RFLOOR = 327,                  /* RFLOOR  */
+    LIM_DEF = 328,                 /* LIM_DEF  */
+    SEQ_CONV_DEF = 329,            /* SEQ_CONV_DEF  */
+    TO_PROVE = 330,                /* TO_PROVE  */
+    INTROS = 331,                  /* INTROS  */
+    SUPPOSE = 332,                 /* SUPPOSE  */
+    SET = 333,                     /* SET  */
+    AUTO_CONC = 334,               /* AUTO_CONC  */
+    AUTO_NOHINT = 335,             /* AUTO_NOHINT  */
+    AUTO_BWD_NOHINT = 336,         /* AUTO_BWD_NOHINT  */
+    USE = 337,                     /* USE  */
+    Tforall = 338,                 /* Tforall  */
+    Texists = 339,                 /* Texists  */
+    Tpower = 340,                  /* Tpower  */
+    BECAUSE = 341,                 /* BECAUSE  */
+    IN = 342,                      /* IN  */
+    IF = 343,                      /* IF  */
+    IS = 344,                      /* IS  */
+    HAVE = 345,                    /* HAVE  */
+    CONTINUE = 346,                /* CONTINUE  */
+    CONTINUE_DEF = 347,            /* CONTINUE_DEF  */
+    UCONTINUE = 348,               /* UCONTINUE  */
+    UC_DEF = 349,                  /* UC_DEF  */
+    FSqueeze = 350,                /* FSqueeze  */
+    SUPRE_THEOREM = 351,           /* SUPRE_THEOREM  */
+    MONO_CONV_THEOREM = 352,       /* MONO_CONV_THEOREM  */
+    UNIQUE_DEF = 353,              /* UNIQUE_DEF  */
+    BOUND_DEF = 354,               /* BOUND_DEF  */
+    SUPRE_DEF = 355,               /* SUPRE_DEF  */
+    INFI_DEF = 356,                /* INFI_DEF  */
+    BOUND_BELOW = 357,             /* BOUND_BELOW  */
+    BOUND_ABOVE = 358,             /* BOUND_ABOVE  */
+    MONOINC = 359,                 /* MONOINC  */
+    MONODEC = 360,                 /* MONODEC  */
+    TBELONG = 361,                 /* TBELONG  */
+    TLINE = 362,                   /* TLINE  */
+    CONVERGE = 363,                /* CONVERGE  */
+    DIVERGE = 364,                 /* DIVERGE  */
+    BOUND = 365,                   /* BOUND  */
+    UNIQUE = 366                   /* UNIQUE  */
   };
+  typedef enum yytokentype yytoken_kind_t;
 #endif
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-
 union YYSTYPE
 {
-#line 11 "M.y" /* yacc.c:1909  */
+#line 11 "M.y"
 
 //no special need for double ,just to make a union to define the type as node.
 struct ast* a;
 double d;
 
-#line 147 "M.tab.h" /* yacc.c:1909  */
-};
+#line 181 "M.tab.h"
 
+};
 typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
@@ -154,6 +188,8 @@ typedef union YYSTYPE YYSTYPE;
 
 extern YYSTYPE yylval;
 
+
 int yyparse (void);
+
 
 #endif /* !YY_YY_M_TAB_H_INCLUDED  */

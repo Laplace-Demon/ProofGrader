@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include<string.h>
+#include <string.h>
 #include "M.tab.h"
 #include "flex.h"
 #include "func.h"
@@ -39,15 +39,15 @@ int main(int argc, char **argv) {
 		const char* output_file = s;
 		fp = fopen(output_file,"w");
 	}
-	fprintf(fp,"From lib Require Import ExplicitName.\nFrom lib Require Import Lang.\nFrom lib Require Import Poly.\nFrom lib Require Import Solver.\nFrom lib Require Import Elaborator.\nFrom lib Require Import Checker.\nRequire Import String.\nRequire Import ZArith.\nRequire Import List.\nLocal Open Scope Z.\nLocal Open Scope string.\nLocal Open Scope list.\nImport ListNotations.\n");
+	fprintf(fp,"From MParser Require Import ExplicitName.\nFrom MParser Require Import Lang.\nFrom MParser Require Import Poly.\nFrom MParser Require Import Solver.\nFrom MParser Require Import Elaborator.\nFrom MParser Require Import Checker.\nRequire Import String.\nRequire Import ZArith.\nRequire Import List.\nLocal Open Scope Z.\nLocal Open Scope string.\nLocal Open Scope list.\nImport ListNotations.\n");
 	extern struct ast* root;
     
 	printtree(root,fp);
 	
 
-	while(action_stack--){
+	/*while(action_stack--){
                 fprintf(fp,")");
-            }
+            }*/
 	fprintf(fp,".\n\n");
 	fprintf(fp,"\n");
 	fprintf(fp,"Definition assum := get_assum premise nil.\n");
@@ -55,13 +55,13 @@ int main(int argc, char **argv) {
 
     fprintf(fp,"Definition temp := elaboration pg pr.\n");
 	fprintf(fp,"Definition pg' := fst temp.\n");
-	fprintf(fp,"Definition pr':=snd temp.\n");
+	fprintf(fp,"Definition pr' := snd temp.\n");
     fprintf(fp,"Definition check_result := fst (check_rec' pg' pr').\n");
     fprintf(fp,"Compute check_result.\n");
 	
 	
 
-	fprintf(fp,"End ProofGoal.\n");	
+	fprintf(fp,"End Goal001.\n");	
 
 	fclose(fp);
 }

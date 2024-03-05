@@ -1,190 +1,13 @@
-From lib Require Import Lang.
-From lib Require Import Theorems.
-From lib Require Import Poly.
-From lib Require Import Solver.
+From MParser.lib Require Import Lang.
+From MParser.lib Require Import Theorems.
+From MParser.lib Require Import Poly.
+From MParser.lib Require Import Solver.
 Require Import String.
 Require Import ZArith.
 Require Import List.
 Local Open Scope Z.
 Local Open Scope string.
 Local Open Scope list.
-
-(* matching algorithms for applying definitions, theorems and properties *)
-
-Fixpoint term_match_allowing_mistake (t1: term) (t2: term_pattern) (binded: list VarName.t) (res: list (TermVarName.t * term)): option (list (TermVarName.t * term)) :=
-  match t1, t2 with
-  | TUnOp u1 t1, TPUnOp u2 t2 =>
-      if TERM.UnOp_eqb u1 u2
-      then term_match_allowing_mistake t1 t2 binded res
-      else None
-  | TBinOp b1 t11 t12, TPBinOp b2 t21 t22 =>
-      if TERM.BinOp_eqb b1 b2
-      then match term_match_allowing_mistake t11 t21 binded res with
-           | Some res' => term_match_allowing_mistake t12 t22 binded res'
-           | None => None
-           end
-      else None
-  | TApply t11 t12, TPApply t21 t22 =>
-      match term_match_allowing_mistake t11 t21 binded res with
-      | Some res' => term_match_allowing_mistake t12 t22 binded res'
-      | None => None
-      end
-  | TBinder b1 x1 t11, TPBinder b2 x2 t21 =>
-      term_match_allowing_mistake (subst_term t11 ((x1, TVar x2) :: nil)) t21 (x2 :: binded) res
-  | _, TPTVar x =>
-      if existsb (fun x => freely_occur_term x t1) binded
-      then None
-      else match TERM_PM.look_up res x with
-           | Some t1' => if term_eqb t1 t1'
-                         then Some res
-                         else None
-           | None => Some ((x, t1) :: res)
-           end
-  | _, _ => Some res
-  end.
-
-Fixpoint prop_match_ignoring_quantifiers (p: prop) (pp: prop_pattern) (binded: list VarName.t) (res: list (TermVarName.t * term)) (fuel: nat): option subst_task :=
-  match fuel with
-  | O => Some res
-  | S fuel' =>
-  match p, pp with
-  | PUnPred u1 t11, PPUnPred u2 t21 =>
-      if PROP.UnOp_eqb u1 u2
-      then term_match_allowing_mistake t11 t21 binded res
-      else None
-  | PBinPred b1 t11 t12, PPBinPred b2 t21 t22 =>
-      if PROP.BinOp_eqb b1 b2
-      then match term_match_allowing_mistake t11 t21 binded res with
-           | Some res' => term_match_allowing_mistake t12 t22 binded res'
-           | None => None
-           end
-      else None
-  | PUnOp u1 P1, PPUnOp u2 P2 =>
-      if PROP.UniConnect_eqb u1 u2
-      then prop_match_ignoring_quantifiers P1 P2 binded res fuel'
-      else None
-
-  | PBinOp PROP.CImpl P11 P12, P2 =>
-      prop_match_ignoring_quantifiers P12 P2 binded res fuel'
-  | P1, PPBinOp PROP.CImpl P21 P22 =>
-      prop_match_ignoring_quantifiers P1 P22 binded res fuel'
-
-  | PBinOp b1 P11 P12, PPBinOp b2 P21 P22 =>
-      if PROP.BinConnect_eqb b1 b2
-      then match prop_match_ignoring_quantifiers P11 P21 binded res fuel' with
-           | Some res' => prop_match_ignoring_quantifiers P12 P22 binded res' fuel'
-           | None => None
-           end
-      else None
-  | PQuant q1 x1 P11, P2 =>
-      prop_match_ignoring_quantifiers P11 P2 (x1 :: binded) res fuel'
-  | P1, PPQuant q2 x2 P21 =>
-      prop_match_ignoring_quantifiers P1 P21 (x2 :: binded) res fuel'
-  | _, _ => None
-  end
-  end.
-
-  (* p1 -> p2 *)
-
-Fixpoint prop_eqb_allowing_quantifiers_helper (pg: proof_goal) (p1 p2: prop) (fuel: nat): bool :=
-  match fuel with
-  | O => false
-  | S fuel' =>
-  match p1, p2 with
-  | PLongOrder o1 t1 p11, PLongOrder o2 t2 p21 => PROP.ROrder_eqb o1 o2 && term_eqb t1 t2 && prop_eqb_allowing_quantifiers_helper pg p11 p21 fuel'
-  | PUnPred u1 t1, PUnPred u2 t2 => PROP.UnOp_eqb u1 u2 && term_eqb t1 t2
-  | PBinPred b1 t11 t12, PBinPred b2 t21 t22 => PROP.BinOp_eqb b1 b2 && term_eqb t11 t21 && term_eqb t12 t22
-  | PCBinPred b1 t11 t12 cont1, PCBinPred b2 t21 t22 cont2 => PROP.BinOp_eqb b1 b2 && term_eqb t11 t21 && term_eqb t12 t22 && prop_cont_eqb cont1 cont2
-  | PUnOp u1 p11, PUnOp u2 p21 => PROP.UniConnect_eqb u1 u2 && prop_eqb_allowing_quantifiers_helper pg p11 p21 fuel'
-  | _, _ =>
-      let possibility1 :=
-          match p1, p2 with
-          | PQuant q1 x1 p11, PQuant q2 x2 p21 => andb (PROP.Quant_eqb q1 q2) (prop_eqb_allowing_quantifiers_helper pg p11 (subst_prop p21 ((x2, TVar x1) :: nil)) fuel')
-          | _, _ => false
-          end in
-      let possibility2 :=
-          match p1, p2 with
-          | PQuant PROP.QForall x1 p11, p21 =>
-              let p11' := p2pp_with_var p11 x1 in
-              prop_match_allowing_quantifiers_left pg p11' p21 fuel'
-          | _, _ => false
-          end in
-      let possibility3 :=
-          match p1, p2 with
-          | p11, PQuant PROP.QExists x2 p21 =>
-              let p21' := p2pp_with_var p21 x2 in
-              prop_match_allowing_quantifiers_right pg p11 p21' fuel'
-          | _, _ => false
-          end in
-      let possibility31 :=
-          match p1, p2 with
-          | PQuant PROP.QExists x1 p11, p21 =>
-              if list_in VarName.eqb (freely_occurs_in_proof_goal pg) x1 then false
-              else let p11' := p2pp_with_var p11 x1 in
-                   prop_match_allowing_quantifiers_left pg p11' p21 fuel'
-          | _, _ => false
-          end in
-      let possibility4 :=
-          match p1, p2 with
-          | PBinOp b1 p11 p12, PBinOp b2 p21 p22 =>
-              andb (PROP.BinConnect_eqb b1 b2) (andb (prop_eqb_allowing_quantifiers_helper pg p11 p21 fuel') (prop_eqb_allowing_quantifiers_helper pg p12 p22 fuel'))
-          | _, _ => false
-          end in
-      let possibility5 :=
-          match p1, p2 with
-          | PBinOp PROP.CImpl p11 p12, p21 =>
-              if prop_in_proof_goal pg p11 then prop_eqb_allowing_quantifiers_helper pg p12 p21 fuel' else false
-          | _, _ => false
-          end in
-      let possibility6 :=
-          match p1, p2 with
-          | p12, PBinOp PROP.CImpl p21 p22 =>
-              if prop_in_proof_goal pg p21 then prop_eqb_allowing_quantifiers_helper pg p12 p22 fuel' else false
-          | _, _ => false
-          end in
-      possibility1 || possibility2 || possibility3 || possibility31 || possibility4 || possibility5 || possibility6
-  end
-  end
-
-with prop_match_allowing_quantifiers_left (pg: proof_goal) (pp: prop_pattern) (p: prop) (fuel: nat): bool :=
-  match fuel with
-  | O => false
-  | S fuel' =>
-  match prop_match_ignoring_quantifiers p pp nil nil fuel' with
-  | Some res =>
-      let p' := TERM_PM.pattern_subst_prop pp res nil in
-      prop_eqb_allowing_quantifiers_helper pg p' p fuel'
-  | None => false
-  end
-  end
-
-with prop_match_allowing_quantifiers_right (pg: proof_goal) (p: prop) (pp: prop_pattern) (fuel: nat): bool :=
-  match fuel with
-  | O => false
-  | S fuel' =>
-  match prop_match_ignoring_quantifiers p pp nil nil fuel' with
-  | Some res =>
-      let p' := TERM_PM.pattern_subst_prop pp res nil in
-      prop_eqb_allowing_quantifiers_helper pg p p' fuel'
-  | None => false
-  end
-  end.
-
-Definition prop_eqb_allowing_quantifiers (pg: proof_goal) (p1 p2: prop) : bool :=
-  prop_eqb_allowing_quantifiers_helper pg p1 p2 1000.
-
-Definition prop_match_allowing_quantifiers (pg: proof_goal) (pp: prop_pattern) (p: prop): option subst_task :=
-  match prop_match_ignoring_quantifiers p pp nil nil 1000 with
-  | Some res =>
-      if prop_match_allowing_quantifiers_left pg pp p 1000 then Some res else None
-  | None => None
-  end.
-
-Definition prop_in_proof_goal_allowing_quantifiers (pg: proof_goal) (p: prop): bool :=
-  let assu := map (fun x => snd x) pg.(assu) in
-  list_in (fun x y => prop_eqb_allowing_quantifiers pg x y) assu p.
-
-
 
 (* Apply definition *)
 
@@ -200,8 +23,11 @@ Definition definition_match (pg: proof_goal) (pending: prop) (def: definition): 
 Definition definition_apply (pg: proof_goal) (def: PROOF.Def) (p: prop): option (list prop):=
   let usable_definitions := (match def with
   | PROOF.SeqLimit => Definitions.SeqLimit_definitions
+  | PROOF.SeqConvergence => Definitions.SeqConvergence_definitions
   | PROOF.Continuity => Definitions.Continuity_definitions
   | PROOF.UContinuity => Definitions.UContinuity_definitions
+  | PROOF.Unique => Definitions.Unique_definitions
+  | PROOF.Bounded => Definitions.Bounded_definitions
   | PROOF.UpperBound => Definitions.UpperBound_definitions
   | PROOF.LowerBound => Definitions.LowerBound_definitions
   | PROOF.Supremum => Definitions.Supremum_definitions
@@ -231,7 +57,7 @@ Definition modify_theorem_with_hints (thm: PROOF.Thm) (hints: list term) (origin
 Definition theorem_apply (pg: proof_goal) (thm: PROOF.Thm) (p: prop) (hints: list term): option (list prop):=
   let usable_theorems := (match thm with
   | PROOF.AGAverage => nil
-  | PROOF.SGAverage => nil
+  | PROOF.SGAverage => Inequalities.SG_Average_inequalities
   | PROOF.Squeeze => nil
   | PROOF.SupremumAndInfimum => Theorems.SupremumAndInfimum_theorems
   | PROOF.MonoConvergence => nil
@@ -302,7 +128,6 @@ Fixpoint quantifier_adder (P: prop): (prop -> prop) :=
 End Quantifier.
 
 (* 所有命题的验证其实都应在这里进行，不过目前只有部分 *)
-(* TODO LongOrder 产生的子结论可能不止一个，所以以后要改成 list prop *)
 
 Fixpoint check_prop (p: prop) (pg: proof_goal) (fuel: nat) : (list bool) * (list prop) :=
   match fuel with
@@ -354,7 +179,7 @@ Definition check_fwd_proof (pg : proof_goal) (PrF : PROOF.Fwd) (P : prop) : opti
                                 (map (get_prop_from_hyp_name pg) hs0)
                                 (get_prop_from_hyp_name pg h) in
                     match oP with
-                    | Some P' => fwd_result (check_concl_auto_with_hint_R P' P)
+                    | Some P' => fwd_result (check_concl_auto_with_hint_R P' P) (* testin19 *)
                     | _ => None
                     end
       end
@@ -368,24 +193,9 @@ Definition check_fwd_proof (pg : proof_goal) (PrF : PROOF.Fwd) (P : prop) : opti
       end
   | PROOF.FAGAverage => None
   | PROOF.FSGAverage =>
-      match P with
-      | PBinPred PROP.RLe t1 t2 =>
-          match TERM_PM.pattern_match_term_rec t1 (fst Definitions.SG_Average_statement) nil nil with
-          | Some res => match TERM_PM.pattern_match_term_rec t2 (snd Definitions.SG_Average_statement) nil res with
-                        | Some _ => Some nil
-                        | _ => None
-                        end
-          | _ => None
-          end
-      | PBinPred PROP.RGe t2 t1 =>
-          match TERM_PM.pattern_match_term_rec t1 (fst Definitions.SG_Average_statement) nil nil with
-          | Some res => match TERM_PM.pattern_match_term_rec t2 (snd Definitions.SG_Average_statement) nil res with
-                        | Some _ => Some nil
-                        | _ => None
-                        end
-          | _ => None
-          end
-      | _ => None
+      match theorem_apply pg PROOF.SGAverage P nil with
+      | Some _ => Some nil
+      | None => None
       end
   | PROOF.FSqueezeTheorem =>
       squeeze_theorem pg P
@@ -425,6 +235,15 @@ Definition check_fwd_proof (pg : proof_goal) (PrF : PROOF.Fwd) (P : prop) : opti
           | None => None
           end
       end
+  | PROOF.FSquareBothTerms =>
+      match pg.(assu) with
+      | nil => None
+      | hypo :: _ =>
+          match snd hypo, P with
+          | PBinPred PROP.REq tm11 tm12, PBinPred PROP.REq tm21 tm22 => if andb (term_eq_P (TBinOp TERM.RMult tm11 tm11) tm21) (term_eq_P (TBinOp TERM.RMult tm12 tm12) tm22) then Some nil else None
+          | _, _ => None
+          end
+      end 
   | PROOF.FSeqLimitDef =>
       match TERM_PM.pattern_match_prop_rec P (fst Definitions.LimitDef_statement) nil nil  with
       | Some res => Some ((Beta_prop (TERM_PM.pattern_subst_prop (snd Definitions.LimitDef_statement) res nil)):: nil)
@@ -519,7 +338,7 @@ with term_exists_in_prop (obj: term) (p: prop): bool :=
   | PLongOrder _ tm1 p1 => andb (term_exists_in_term obj tm1) (term_exists_in_prop obj p1)
   | PUnPred _ tm1 => term_exists_in_term obj tm1
   | PBinPred _ tm1 tm2 => andb (term_exists_in_term obj tm1) (term_exists_in_term obj tm2)
-  | PCBinPred _ tm1 tm2 cont => andb (andb (term_exists_in_term obj tm1) (term_exists_in_term obj tm2)) (term_exists_in_prop_cont obj cont)
+  | PCBinPred _ tm1 tm2 cont => andb (andb (term_exists_in_term obj tm1) (term_exists_in_term obj tm2)) (forallb (fun x => term_exists_in_prop_cont obj x) cont)
   | PUnOp _ p1 => term_exists_in_prop obj p1
   | PBinOp _ p1 p2 => andb (term_exists_in_prop obj p1) (term_exists_in_prop obj p2)
   | PQuant _ _ p1 => term_exists_in_prop obj p1 (* TODO 需要考虑到变量绑定，需要考虑到量词的语义 *)
@@ -871,7 +690,7 @@ Fixpoint check_rec'_show_pg (pg : proof_goal) (pr : proof) (fuel : nat) : proof_
       | None => pg
       end 
   
-    | PrPoseWithoutProof z1 z2 PrF P pr0 =>
+    | PrPoseWithoutProof z1 z2 _ P pr0 =>
       match new_hyp_name pg.(assu) "___hyp" with
       | Some h =>
           match P with

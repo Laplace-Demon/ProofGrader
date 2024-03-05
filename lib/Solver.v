@@ -1,5 +1,6 @@
-From lib Require Import Lang.
-From lib Require Import Poly.
+From MParser.lib Require Import Lang.
+From MParser.lib Require Import Poly.
+From MParser.lib Require Import Theorems.
 
 Require Import String.
 Require Import ZArith.
@@ -119,7 +120,7 @@ Fixpoint term_resemble_infty_check (tm : term) : bool :=
 
 Definition prop_resemble_infty_check (P : prop) : Z :=
   match P with
-  | PBinPred o t1 t2 => if orb (term_resemble_infty_check t1) (term_resemble_infty_check t2) then 200 else 0
+  | PBinPred o t1 t2 => if orb (term_resemble_infty_check t1) (term_resemble_infty_check t2) then 2 else 0
   | _ => 0
   end.
 
@@ -145,7 +146,7 @@ Definition prop_resemble_muldiv_exp (p : prop) : Z :=
   | PBinPred o t1 t2 =>
        if andb (term_resemble_muldiv_exp t1) (term_resemble_muldiv_exp t2)
        then match o with
-            | PROP.REq | PROP.RLe | PROP.RGe | PROP.RGt | PROP.RLt => 100
+            | PROP.REq | PROP.RLe | PROP.RGe | PROP.RGt | PROP.RLt => 1
             | _ => 0
             end
        else 0
@@ -294,35 +295,32 @@ Fixpoint term_simpl_local_detect (tm1 tm2 : term) : list (term * term) :=
   | _, _ => (tm1, tm2) :: nil
   end.
 
-Fixpoint term_local_detect (tm1 tm2 : term) (status : option prop_context) : list (term * term * (option prop_context)) :=
+Fixpoint term_local_detect (tm1 tm2 : term) (status : list prop_context) : list (term * term * (list prop_context)) := (* TODO 正确处理 context 之间的关系 *)
   match tm1, tm2 with
   | TNum z1, TNum z2 => if Z.eqb z1 z2 then nil else ((tm1, tm2), status) :: nil
   | TConst c1, TConst c2 => if TERM.Const_eqb c1 c2 then nil else ((tm1, tm2), status) :: nil
   | TUnOp u1 t1, TUnOp u2 t2 =>
-       match u1, u2 with
-       | TERM.RCos, TERM.RCos | TERM.RAbs, TERM.RAbs =>
-            match status with
-            | None => term_local_detect t1 t2 (Some CEvenFun)
-            | Some CEvenFun => term_local_detect t1 t2 (Some CEvenFun)
-            | Some (CLimPlus var val) => term_local_detect t1 t2 (Some (CLimPlus var val))
-            | Some (CLimMult var val) => term_local_detect t1 t2 (Some (CLimMult var val))
-            end
-       | _, _ => if TERM.UnOp_eqb u1 u2 then term_local_detect t1 t2 status else ((tm1, tm2), status) :: nil
-       end
+      match u1, u2 with
+      | TERM.RCos, TERM.RCos =>
+          term_local_detect t1 t2 (CEvenFun :: (CPeriodicFun (TBinOp TERM.RMult (TNum 2) (TConst TERM.RPi))) :: status)
+      | TERM.RAbs, TERM.RAbs =>
+          term_local_detect t1 t2 (CEvenFun :: status)
+      | _, _ => if TERM.UnOp_eqb u1 u2 then term_local_detect t1 t2 status else ((tm1, tm2), status) :: nil
+      end
   | TBinOp b1 t11 t12, TBinOp b2 t21 t22 =>
-       match b1, b2 with
-       | TERM.RLim, TERM.RLim =>
-            match t12, t22 with
-            | TBinder TERM.LambdaB var1 t121, TBinder TERM.LambdaB var2 t221 => if andb (term_eqb t11 t21) (VarName.eqb var1 var2) then ((t121, t221), Some (CLimMult (TVar var1) t11)) :: nil else ((t12, t22), status) :: nil
-            | _, _ => ((t12, t22), status) :: nil
-            end
-       | TERM.RPlus, TERM.RPlus | TERM.RMinus, TERM.RMinus =>
-            match status with
-            | Some (CLimMult var val) => (term_local_detect t11 t21 (Some (CLimPlus var val))) ++ (term_local_detect t12 t22 (Some (CLimPlus var val)))
-            | _ => (term_local_detect t11 t21 status) ++ (term_local_detect t12 t22 status)
-            end
-       | _, _ => if TERM.BinOp_eqb b1 b2 then (term_local_detect t11 t21 status) ++ (term_local_detect t12 t22 status) else ((tm1, tm2), status) :: nil
-       end
+      match b1, b2 with
+      | TERM.RLim, TERM.RLim =>
+          match t12, t22 with
+          | TBinder TERM.LambdaB var1 t121, TBinder TERM.LambdaB var2 t221 => if andb (term_eqb t11 t21) (VarName.eqb var1 var2) then ((t121, t221), (CLimMult (TVar var1) t11) :: status) :: nil else ((t12, t22), status) :: nil
+          | _, _ => ((t12, t22), status) :: nil
+          end
+      | TERM.RPlus, TERM.RPlus | TERM.RMinus, TERM.RMinus =>
+          match status with
+          | (CLimMult var val) :: status' => (term_local_detect t11 t21 ((CLimPlus var val) :: status')) ++ (term_local_detect t12 t22 ((CLimPlus var val) :: status'))
+          | _ => (term_local_detect t11 t21 status) ++ (term_local_detect t12 t22 status)
+          end
+      | _, _ => if TERM.BinOp_eqb b1 b2 then (term_local_detect t11 t21 status) ++ (term_local_detect t12 t22 status) else ((tm1, tm2), status) :: nil
+      end
   | TApply t11 t12, TApply t21 t22 => (term_local_detect t11 t21 status) ++ (term_local_detect t12 t22 status)
   | TBinder b1 x1 t1, TBinder b2 x2 t2 => if andb (TERM.Binder_eqb b1 b2) (VarName.eqb x1 x2) then term_local_detect t1 t2 status else ((tm1, tm2), status) :: nil
   | TVar x1, TVar x2 => if VarName.eqb x1 x2 then nil else ((tm1, tm2), status) :: nil
@@ -332,18 +330,18 @@ Fixpoint term_local_detect (tm1 tm2 : term) (status : option prop_context) : lis
 Definition local_detect (pg : proof_goal) (P : prop) : option (list prop) :=
   match P with
   | PBinPred PROP.REq tm1 tm2 =>
-       let helper := fun x => match snd x with | None => PBinPred PROP.REq (fst (fst x)) (snd (fst x)) | Some cont => PCBinPred PROP.REq (fst (fst x)) (snd (fst x)) cont end in
-       Some (map helper (term_local_detect tm1 tm2 None))
+       let helper := fun x => match snd x with | nil => PBinPred PROP.REq (fst (fst x)) (snd (fst x)) | _ => PCBinPred PROP.REq (fst (fst x)) (snd (fst x)) (snd x) end in
+       Some (map helper (term_local_detect tm1 tm2 nil))
   | PCBinPred PROP.REq tm1 tm2 cont =>
-       let helper := fun x => match snd x with | None => PBinPred PROP.REq (fst (fst x)) (snd (fst x)) | Some cont => PCBinPred PROP.REq (fst (fst x)) (snd (fst x)) cont end in
-       Some (map helper (term_local_detect tm1 tm2 (Some cont)))
+       let helper := fun x => match snd x with | nil => PBinPred PROP.REq (fst (fst x)) (snd (fst x)) | _ => PCBinPred PROP.REq (fst (fst x)) (snd (fst x)) (snd x) end in
+       Some (map helper (term_local_detect tm1 tm2 cont))
   | _ => None
   end.
 
 (* 移除 context *)
 Definition prop_resemble_cancel_context (P : prop) :=
   match P with
-  | PCBinPred _ _ _ _ => 100
+  | PCBinPred _ _ _ _ => 1
   | _ => 0
   end.
 
@@ -365,8 +363,8 @@ Definition term_has_abs (t : term) : bool:=
 
 Definition prop_has_abs (P:prop) : Z:=
   match P with
-  |PBinPred o t1 t2 =>if term_has_abs t1 then 100
-                   else if term_has_abs t2 then 100
+  |PBinPred o t1 t2 =>if term_has_abs t1 then 1
+                   else if term_has_abs t2 then 1
                    else 0 
   |_ => 0
   end.
@@ -412,8 +410,8 @@ Definition prop_resemble_abs_add_neg (P : prop) : Z :=
        match tm1, tm2 with
        | TUnOp TERM.RAbs t11, TUnOp TERM.RAbs t21 =>
             match term_is_neg t11, term_is_neg t21 with
-            | Some t11', None => if term_eqb t11' t21 then 200 else 0
-            | None, Some t21' => if term_eqb t11 t21' then 200 else 0
+            | Some t11', None => if term_eqb t11' t21 then 2 else 0
+            | None, Some t21' => if term_eqb t11 t21' then 2 else 0
             | _, _ => 0
             end
        | _, _ => 0
@@ -434,8 +432,8 @@ Definition term_has_absmul (t : term) : bool :=
 Definition prop_has_absmul (P : prop) : Z :=
   match P with
   | PBinPred PROP.REq t1 t2 | PBinPred PROP.RGe t1 t2 | PBinPred PROP.RLe t1 t2 =>
-       if term_has_absmul t1 then 100
-       else if term_has_absmul t2 then 100
+       if term_has_absmul t1 then 1
+       else if term_has_absmul t2 then 1
        else 0
   | _ => 0
   end.
@@ -496,8 +494,8 @@ Definition term_has_lim (t :term) :bool :=
 
 Definition prop_has_lim (P : prop) : Z :=
   match P with
-  |PBinPred o t1 t2=>if term_has_lim t1 then 100
-                   else if term_has_lim t2 then 100
+  |PBinPred o t1 t2=>if term_has_lim t1 then 1
+                   else if term_has_lim t2 then 1
                    else 0 
   |_ => 0
   end. 
@@ -586,7 +584,7 @@ Definition replace_term_s (pg: proof_goal) (P: prop): option (list prop) :=
 (* 多步代换，不会继续调用其他solver *)
 Definition prop_resemble_multi_replace_term (P : prop) : Z :=
   match P with
-  | PBinPred PROP.RLe _ _ | PBinPred PROP.RGe _ _ => 100
+  | PBinPred PROP.RLe _ _ | PBinPred PROP.RGe _ _ => 1
   | _ => 0
   end.
 
@@ -605,6 +603,7 @@ Definition simple_inequality_scaling_g (hypos : list prop) (tm : term) : option 
 
   | TBinOp TERM.RMax tm1 tm2 => Some ((tm1, PBinPred PROP.RGe tm tm1) :: (tm2, PBinPred PROP.RGe tm tm2) :: nil)
 
+  | TBinOp TERM.RPower _ (TNum 2) => Some ((TNum 0, PBinPred PROP.RGe tm (TNum 0)) :: nil)
   | _ => None
   end.
 
@@ -818,7 +817,7 @@ Definition multi_replace_term (pg : proof_goal) (P : prop) : bool :=
     concat (map (fun x => map (fun y => (prop_subst (fst x) (fst y), (snd x, snd y))) possible_right_terms) possible_left_terms) in
   let possible_props_with_record' := map (fun x => (fst x, app (fst (snd x)) (snd (snd x)))) possible_props_with_record in
   let modified_props := map (fun x => if prop_is_strict (fst x) then (if existsb prop_is_strict (snd x) then prop_modify_strict (fst x) else fst x) else fst x ) possible_props_with_record' in
-  let chosen_props := prop_selector modified_props 100 in
+  let chosen_props := prop_selector modified_props 20 in
   existsb (fun x => prop_is_provable pg x) chosen_props.
 
 
@@ -842,7 +841,7 @@ Definition test_multi_replace_term (pg : proof_goal) (P : prop) :=
     concat (map (fun x => map (fun y => (prop_subst (fst x) (fst y), (snd x, snd y))) possible_right_terms) possible_left_terms) in
   let possible_props_with_record' := map (fun x => (fst x, app (fst (snd x)) (snd (snd x)))) possible_props_with_record in
   let modified_props := map (fun x => if prop_is_strict (fst x) then (if existsb prop_is_strict (snd x) then prop_modify_strict (fst x) else fst x) else fst x ) possible_props_with_record' in
-  let chosen_props := prop_selector modified_props 100 in
+  let chosen_props := prop_selector modified_props 10 in
   chosen_props.
 
 Definition multi_replace_term_s (pg : proof_goal) (P : prop) : option (list prop) :=
@@ -1015,9 +1014,9 @@ Definition prop_resemble_lim_operation (P : prop) : Z :=
   | PBinPred PROP.REq t1 t2 =>
       match term_is_lim t1, term_is_lim t2 with
       | Some (var1, tm1, _), None =>
-          if term_resemble_lim_operation_right t2 var1 tm1 then 200 else 0
+          if term_resemble_lim_operation_right t2 var1 tm1 then 2 else 0
       | None, Some (var2, tm2, _) =>
-          if term_resemble_lim_operation_right t1 var2 tm2 then 200 else 0
+          if term_resemble_lim_operation_right t1 var2 tm2 then 2 else 0
       | _, _ => 0
       end
   | _ => 0
@@ -1144,7 +1143,7 @@ Compute SYMBOLIC_CHECKER.replace_Eq
 (* 将极限的变量代换进表达式 *)
 Definition prop_resemble_lim_replace (P : prop) : Z :=
   match P with
-  | PBinPred o t1 t2 => if andb (term_has_lim t1) (negb (term_has_lim t2)) then 100 else 0
+  | PBinPred o t1 t2 => if andb (term_has_lim t1) (negb (term_has_lim t2)) then 2 else 0
   | _ => 0
   end.
 
@@ -1176,7 +1175,7 @@ Definition term_resemble_tri_identity (tm : term) : bool :=
 Definition prop_resemble_tri_identity (P : prop) : Z :=
   match P with
   | PBinPred PROP.REq tm1 tm2 =>
-       if orb (andb (term_eqb tm1 (TNum 1)) (term_resemble_tri_identity tm2)) (andb (term_eqb tm2 (TNum 1)) (term_resemble_tri_identity tm1)) then 200
+       if orb (andb (term_eqb tm1 (TNum 1)) (term_resemble_tri_identity tm2)) (andb (term_eqb tm2 (TNum 1)) (term_resemble_tri_identity tm1)) then 2
        else 0
   | _ => 0
   end.
@@ -1216,7 +1215,7 @@ Definition term_resemble_tri_product (tm : term) : bool :=
 Definition prop_resemble_tri_sum2product (P : prop) : Z :=
   match P with
   | PBinPred PROP.REq tm1 tm2 =>
-       if orb (term_resemble_tri_product tm1) (term_resemble_tri_product tm2) then 200
+       if orb (term_resemble_tri_product tm1) (term_resemble_tri_product tm2) then 2
        else 0
   | _ => 0
   end.
@@ -1311,46 +1310,63 @@ Definition tri_sum2product (pg : proof_goal) (P : prop) : option (list prop) :=
   | _ => None
   end.
 
+(* 三角恒等式, 最终应该能够包括前面两个solver *)
 
+Definition prop_resemble_tri_identities (P : prop) : Z :=
+  match P with
+  | PBinPred PROP.REq tm1 tm2 =>
+       if orb (term_contain_tri tm1) (term_contain_tri tm2) then 2
+       else 0
+  | _ => 0
+  end.
+
+Definition prop_match_tri_identities (pg : proof_goal) (p: prop) : option (list prop) :=
+  if existsb (fun x => orb (match TERM_PM.pattern_match_prop_rec p (PPBinPred PROP.REq (fst x) (snd x)) nil nil with | Some _ => true | None => false end) (match TERM_PM.pattern_match_prop_rec p (PPBinPred PROP.REq (snd x) (fst x)) nil nil with | Some _ => true | None => false end)) TriIdentities.tri_identities
+  then Some nil
+  else None.
 
 (* 三角函数计算 *)
 Definition prop_resemble_tri_calculate (P : prop) : Z :=
   match P with
   | PBinPred PROP.REq tm1 tm2 =>
-       if orb (andb (term_is_tri tm1) (term_is_num tm2)) (andb (term_is_tri tm2) (term_is_num tm2)) then 200
+       if orb (term_contain_tri tm1) (term_contain_tri tm2) then 1
        else 0
   | _ => 0
   end.
 
 Definition tri_calculate (pg : proof_goal) (P : prop) : option (list prop) :=
   match P with
-  | PBinPred PROP.REq tm1 tm2 => 
-       match tri_calculator tm1, tri_calculator tm2 with
-       | None, None => None
-       | Some tm1', _ => Some ((PBinPred PROP.REq tm1' tm2) :: nil)
-       | _, Some tm2' => Some ((PBinPred PROP.REq tm1 tm2') :: nil)
-       end
+  | PBinPred o tm1 tm2 => 
+      match tri_calculator tm1, tri_calculator tm2 with
+      | Some tm1', Some tm2' => Some ((PBinPred o tm1' tm2') :: nil)
+      | Some tm1', None => Some ((PBinPred o tm1' tm2) :: nil)
+      | None, Some tm2' => Some ((PBinPred o tm1 tm2') :: nil)
+      | None, None => None
+      end
   | _ => None
   end.
 
 (* 等价无穷小替换，要求有 context *)
 
+Fixpoint extract_first_limmult (cont : list prop_context) : option (VarName.t * term) :=
+  match cont with
+  | nil => None
+  | CLimMult (TVar tmvar) tmval :: _ => Some (tmvar, tmval)
+  | _ :: cont' => extract_first_limmult cont'
+  end.
+
 Definition prop_resemble_small_replace (P : prop) : Z :=
   match P with
-  | PCBinPred _ t1 t2 cont =>
-       match cont with
-       | CEvenFun => 0
-       | CLimPlus t1 t2 => 0
-       | CLimMult t1 t2 => 200
-       end
+  | PCBinPred _ _ _ cont =>
+      if existsb (fun x => match x with | CLimMult _ _ => true | _ => false end) cont then 2 else 0
   | _ => 0
   end.
 
 Definition equal_small_replace (pg : proof_goal) (P : prop) : option (list prop) :=
   match P with
   | PCBinPred PROP.RGe t1 t2 cont | PCBinPred PROP.RLe t1 t2 cont | PCBinPred PROP.REq t1 t2 cont  =>
-    match cont with
-    | CLimMult (TVar tmvar) tmval =>
+    match extract_first_limmult cont with
+    | Some (tmvar, tmval) =>
          match equal_small t1 t2 tmvar tmval with
          | (true, _) => Some nil
          | (false, Some P) => Some (P :: nil)
@@ -1361,13 +1377,42 @@ Definition equal_small_replace (pg : proof_goal) (P : prop) : option (list prop)
   | _ => None
   end.
 
+(* 周期函数，要求有context *)
+
+Fixpoint get_period_from_cont (cont : list prop_context) : option term :=
+  match cont with
+  | CPeriodicFun period :: _ => Some period
+  | nil => None
+  | _ :: cont' => get_period_from_cont cont'
+  end.
+
+Definition prop_resemble_periodical (P : prop) : Z :=
+  match P with
+  | PCBinPred _ _ _ cont =>
+      if existsb (fun x => match x with | CPeriodicFun _ => true | _ => false end) cont then 2 else 0
+  | _ => 0
+  end.
+
+Definition equal_periodical (pg : proof_goal) (P : prop) : option (list prop) := (* should use an external solver *)
+  match P with
+  | PCBinPred PROP.REq tm1 tm2 cont  =>
+      match get_period_from_cont cont with
+      | Some period =>
+          match tm1, tm2 with
+          | TBinOp TERM.RPlus tm11 tm12, _ => if term_eq_P tm12 tm2 then Some nil else None
+          | _, TBinOp TERM.RPlus tm21 tm22 => if term_eq_P tm21 tm1 then Some nil else None
+          | _, _ => None
+          end
+      | None => None
+      end
+  | _ => None
+  end.
+
 (* 对数的运算 *)
 
 Definition prop_ln_domain (p : prop) : Z :=
   match p with
-  | PBinPred o t1 t2 => let b1 := ln_function.if_ln_domain t1 in
-                     let b2 := ln_function.if_ln_domain t2 in      
-                     if andb (andb b1 b2) (orb (ln_function.term_has_ln t1) (ln_function.term_has_ln t2)) then 100 else 0
+  | PBinPred o t1 t2 => if (orb (ln_function.term_has_ln t1) (ln_function.term_has_ln t2)) then 1 else 0
   | _ => 0
   end.
 
@@ -1380,6 +1425,36 @@ Definition ln_simpl (pg : proof_goal) (p : prop) : option (list prop) :=
             if orb (Poly_check pg p') (orb (Rational_check pg p') (muldiv_exp_check pg p')) then Some nil else None
        | _ , _ => None
        end
+  | _ => None
+  end.
+
+Fixpoint term_ressemble_ln_calcu (tm : term) : bool :=
+  match tm with
+  | TUnOp TERM.RLn (TConst TERM.RE) => true
+  | TUnOp _ tm1 => term_ressemble_ln_calcu tm1
+  | TBinOp _ tm1 tm2 => orb (term_ressemble_ln_calcu tm1) (term_ressemble_ln_calcu tm2)
+  | TApply tm1 tm2 => orb (term_ressemble_ln_calcu tm1) (term_ressemble_ln_calcu tm2)
+  | _ => false
+  end.
+
+Definition prop_ressemble_ln_calcu (p : prop) : Z :=
+  match p with
+  | PBinPred o t1 t2 => if orb (term_ressemble_ln_calcu t1) (term_ressemble_ln_calcu t2) then 2 else 0
+  | _ => 0
+  end.
+
+Fixpoint ln_calcu_helper (tm: term) : term :=
+  match tm with
+  | TUnOp TERM.RLn (TConst TERM.RE) => TNum 1
+  | TUnOp u tm1 => TUnOp u (ln_calcu_helper tm1)
+  | TBinOp b tm1 tm2 => TBinOp b (ln_calcu_helper tm1) (ln_calcu_helper tm2)
+  | TApply tm1 tm2 => TApply (ln_calcu_helper tm1) (ln_calcu_helper tm2)
+  | _ => tm
+  end.
+
+Definition ln_calcu (pg : proof_goal) (p : prop) : option (list prop) :=
+  match p with
+  | PBinPred o t1 t2 => Some (PBinPred o (ln_calcu_helper t1) (ln_calcu_helper t2) :: nil)
   | _ => None
   end.
 
@@ -1417,7 +1492,7 @@ Fixpoint term_resemble_func_app (tm : term) : bool :=
 
 Definition prop_resemble_func_app (P : prop) : Z :=
   match P with
-  | PBinPred _ t1 t2 => if orb (term_resemble_func_app t1) (term_resemble_func_app t2) then 100 else 0
+  | PBinPred _ t1 t2 => if orb (term_resemble_func_app t1) (term_resemble_func_app t2) then 1 else 0
   | _ => 0
   end.
 
@@ -1483,7 +1558,7 @@ Fixpoint term_has_deri (t : term) : bool :=
 
 Definition prop_has_deri (P : prop) : Z :=
   match P with
-  | PBinPred o t1 t2 => if orb (term_has_deri t1) (term_has_deri t2) then 100 else 0
+  | PBinPred o t1 t2 => if orb (term_has_deri t1) (term_has_deri t2) then 2 else 0
   | _ => 0
   end.
 
@@ -1774,7 +1849,7 @@ Definition term_resemble_hopital_rule (tm : term) : bool :=
 
 Definition prop_resemble_hopital_rule (P : prop) : Z :=
   match P with
-  | PBinPred PROP.REq t1 t2 => if andb (term_resemble_hopital_rule t1) (term_resemble_hopital_rule t2) then 100 else 0
+  | PBinPred PROP.REq t1 t2 => if andb (term_resemble_hopital_rule t1) (term_resemble_hopital_rule t2) then 1 else 0
   | _ => 0
   end.
 
@@ -1874,7 +1949,7 @@ Definition prop_take_lim (p: prop) (var: VarName.t) (val: term) (pg: proof_goal)
 (* 夹逼定理 *)
 Definition prop_resemble_squeeze_theorem (P : prop) : Z :=
   match P with
-  | PBinPred PROP.REq t1 t2 => if andb (term_has_lim t1) (negb (term_has_lim t2)) then 100 else 0
+  | PBinPred PROP.REq t1 t2 => if andb (term_has_lim t1) (negb (term_has_lim t2)) then 1 else 0
   | _ => 0
   end.
 
@@ -1919,7 +1994,7 @@ Fixpoint term_resemble_eln (tm : term) : bool :=
 Definition prop_resemble_eln (P : prop) : Z :=
   match P with
   | PBinPred PROP.REq tm1 tm2 =>
-      if orb (term_resemble_eln tm1) (term_resemble_eln tm2) then 100 else 0
+      if orb (term_resemble_eln tm1) (term_resemble_eln tm2) then 2 else 0
   | _ => 0
   end.
 
@@ -1972,7 +2047,16 @@ Definition equ_trans_Poly (pg : proof_goal) (p1 p2 : prop) : bool :=
   match p1, p2 with
   | PBinPred o1 tm11 tm12, PBinPred o2 tm21 tm22 =>
        if PROP.BinOp_eqb o1 o2
-       then Poly_check pg (PBinPred o1 (TBinOp TERM.RMinus tm11 tm21) (TBinOp TERM.RMinus tm12 tm22))
+       then orb (Poly_check pg (PBinPred o1 (TBinOp TERM.RMinus tm11 tm21) (TBinOp TERM.RMinus tm12 tm22))) (Poly_check pg (PBinPred o1 (TBinOp TERM.RMinus tm11 tm22) (TBinOp TERM.RMinus tm12 tm21)))
+       else false
+  | _, _ => false
+  end.
+
+Definition equ_trans_Rational (pg : proof_goal) (p1 p2 : prop) : bool :=
+  match p1, p2 with
+  | PBinPred o1 tm11 tm12, PBinPred o2 tm21 tm22 =>
+       if PROP.BinOp_eqb o1 o2
+       then orb (Rational_check pg (PBinPred o1 (TBinOp TERM.RDiv tm11 tm21) (TBinOp TERM.RDiv tm12 tm22))) (Rational_check pg (PBinPred o1 (TBinOp TERM.RDiv tm11 tm22) (TBinOp TERM.RDiv tm12 tm21)))
        else false
   | _, _ => false
   end.
@@ -2168,7 +2252,7 @@ Definition equ_trans_rewrite (pg : proof_goal) (p1 p2 : prop) : bool :=
 
 
 Definition equ_trans_list :=
-  equ_trans_Poly :: equ_trans_MuldivExp :: equ_trans_MuldivBase :: equ_trans_MultiMuldivExp :: equ_trans_MultiMuldivBase :: equ_trans_rewrite :: nil.
+  equ_trans_Poly :: equ_trans_Rational :: equ_trans_MuldivExp :: equ_trans_MuldivBase :: equ_trans_MultiMuldivExp :: equ_trans_MultiMuldivBase :: equ_trans_rewrite :: nil.
 
 Definition equ_trans (pg : proof_goal) (p1 p2 : prop) : bool :=
   existsb (fun x => x pg (prop_lambda_remove p1) (prop_lambda_remove p2)) equ_trans_list.
@@ -2276,11 +2360,23 @@ Definition sol_ln_simpl : solver :=
    pri:=1;
    pri_prop:= prop_ln_domain |}.
 
+Definition sol_ln_calcu : solver :=
+  {|func:= ln_calcu;
+   fee:=1;
+   pri:=1;
+   pri_prop:= prop_ressemble_ln_calcu |}.
+
 Definition sol_equal_small : solver := 
  {|func:= equal_small_replace;
   fee:=1;
   pri:=1;
   pri_prop:=prop_resemble_small_replace |}.
+
+Definition sol_periodical_fun : solver := 
+ {|func:= equal_periodical;
+  fee:=1;
+  pri:=1;
+  pri_prop:= prop_resemble_periodical |}.
 
 Definition sol_tri_identity : solver := {|
   func := tri_identity_replace ;
@@ -2301,6 +2397,13 @@ Definition sol_tri_calculate : solver := {|
   fee := 1 ;
   pri := 1 ;
   pri_prop := prop_resemble_tri_calculate ;
+|}.
+
+Definition sol_tri_identities : solver := {|
+  func := prop_match_tri_identities ;
+  fee := 1 ;
+  pri := 1 ;
+  pri_prop := prop_resemble_tri_identities ;
 |}.
 
 Definition sol_lim_operation : solver := {|
@@ -2437,7 +2540,7 @@ Definition sol_final :solver :=
 
 Definition list_solver : list (solver*bool) :=
   (sol_final,true)::(sol_infty_check, true)::(sol_muldiv_exp_check,true)::(sol_muldiv_base_check,true)::(sol_rational_shape,true)::(sol_term_remove,true)::(sol_replace,true)::(sol_multi_replace,true)::(sol_term_simpl,true)::(sol_local_detect,true)::(sol_cancel_context,true)::(sol_divide_absmul,true)::
-  (sol_tri_sum2product,true)::(sol_tri_calculate,true)::(sol_abs,true)::(sol_new_abs,true)::(sol_lim_operation, true)::(sol_lim_replace, true)::(sol_abs_add_neg, true)::(sol_ln_simpl,true)::(sol_func_app,true)::(sol_deri_compute,true)::(sol_hopital_rule,true)::(sol_eln_transformation,true)::(sol_lambda_remove,true)::nil.
+  (sol_tri_sum2product,true)::(sol_tri_calculate,true)::(sol_abs,true)::(sol_new_abs,true)::(sol_lim_operation, true)::(sol_lim_replace, true)::(sol_abs_add_neg, true)::(sol_ln_simpl,true)::(sol_ln_calcu,true) ::(sol_func_app,true)::(sol_deri_compute,true)::(sol_hopital_rule,true)::(sol_eln_transformation,true)::(sol_lambda_remove,true)::(sol_tri_identities,true)::nil.
 
 Definition all_solver := map (fun x => fst x) list_solver.
 
@@ -2445,21 +2548,15 @@ Definition universal_solver : list solver :=
   sol_lambda_remove :: sol_final :: sol_rational_shape :: sol_term_remove :: sol_replace :: sol_multi_replace :: sol_term_simpl :: sol_local_detect :: nil.
 
 Definition conditional_solver : list solver :=
-  sol_divide_absmul :: sol_tri_sum2product :: sol_tri_calculate :: sol_abs :: sol_new_abs :: sol_lim_operation :: sol_lim_replace :: sol_equal_small :: sol_ln_simpl :: sol_muldiv_exp_check :: sol_muldiv_base_check :: sol_cancel_context :: sol_func_app :: sol_hopital_rule :: sol_infty_check :: sol_eln_transformation :: nil.
+  sol_ln_calcu :: sol_deri_compute :: sol_divide_absmul :: sol_tri_sum2product :: sol_tri_calculate :: sol_abs :: sol_new_abs :: sol_lim_operation :: sol_lim_replace :: sol_periodical_fun :: sol_equal_small :: sol_ln_simpl :: sol_muldiv_exp_check :: sol_muldiv_base_check :: sol_cancel_context :: sol_func_app :: sol_hopital_rule :: sol_infty_check :: sol_eln_transformation :: sol_tri_identities :: nil.
 
 Definition useable_solver (l : list (solver * bool)) (P : prop) (pg : proof_goal) : list solver :=
   match l with
    | (s, t) :: n =>
              let temp := map (fun x => (x.(pri_prop) P, x)) conditional_solver in
-             let solver_200 := map (fun x => snd x) (filter (fun x => Z.eqb (fst x) 200) temp) in
-             let solver_100 := map (fun x => snd x) (filter (fun x => Z.eqb (fst x) 100) temp) in
-             match solver_200 with
-             | nil => match solver_100 with
-                      | nil => universal_solver
-                      | _ => app solver_100 universal_solver
-                      end
-             | _ => sol_local_detect :: (app solver_100 solver_200)
-             end
+             let solver_2 := map (fun x => snd x) (filter (fun x => Z.eqb (fst x) 2) temp) in
+             let solver_1 := map (fun x => snd x) (filter (fun x => Z.eqb (fst x) 1) temp) in
+             solver_2 ++ solver_1 ++ universal_solver
    | _ => nil
   end.
 

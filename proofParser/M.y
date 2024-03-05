@@ -18,7 +18,7 @@ double d;
 %token <a> TCONST TFUNC TNUM TVAR
 
 // Term operations
-%token <a> Tadd Ttimes Tdiv Tminus Tfrac Tsqrt Tsin Tcos Tln Tderi DERI BOTH
+%token <a> Tadd Ttimes Tdiv Tminus Tfrac Tsqrt Tsin Tcos  Tsup Tln Tderi DERI SQUARE BOTH
 
 // Term relations , like '\leq' '\geq'
 %token <a> Teq Tleq Tgeq Tneq Tequiv Tlt Tgt Deq
@@ -34,33 +34,39 @@ double d;
 // Actions:
 %token <a> REMEMBER CONCLUDE EQUNADD SINCE TRANS THEN SAME FOR
 // Brackets:
-%token <a> LB1L LB1R LB2L LB2R LB3L LB3R ABS MIN
+%token <a> LB1L LB1R LB2L LB2R LB3L LB3R ABS MAX MIN
 // For Limit sample:
-%token <a> LCEIL RCEIL LFLOOR RFLOOR LIM_DEF TO_PROVE
+%token <a> LCEIL RCEIL LFLOOR RFLOOR LIM_DEF SEQ_CONV_DEF TO_PROVE
 //action statement
-%token <a> INTROS SUPPOSE SET AUTO_CONC AUTO_NOHINT USE Tforall Texists Tpower
+%token <a> INTROS SUPPOSE SET AUTO_CONC AUTO_NOHINT AUTO_BWD_NOHINT USE Tforall Texists Tpower BECAUSE
 //FOr continue
-%token <a> IN CONTINUE CONTINUE_DEF UC_DEF FSqueeze
-
+%token <a> IN IF IS HAVE CONTINUE CONTINUE_DEF UCONTINUE UC_DEF FSqueeze SUPRE_THEOREM MONO_CONV_THEOREM UNIQUE_DEF BOUND_DEF SUPRE_DEF INFI_DEF BOUND_BELOW BOUND_ABOVE
+//properties of sequence
+%token<a> MONOINC MONODEC TBELONG
 //Line Number
 %token <a> TLINE
 //nonterminal leaf (have line number)
-%type <a> TLCONST TLVAR TLNUM  TLsqrt TLln TLderi TLfrac TLeq DLeq TLleq TLgeq TLlt TLgt TLneq TLequiv TLlim TLto TLinfty TLPinfty TLNinfty TLsin TLcos TLforall TLexists
-%type <a> LGOAL LMATH1 LMATH2 LPROOF LQED LGIVEN LUSE LKASaverage LKSGaverage LKAGaverage LREMEMBER LCONCLUDE LEQUNADD LSINCE  LTRANS LTHEN LSAME LLB1L LLB1R LLB2L LLB2R LLB3L LLB3R LABS LMIN LCOMMA LBOTH LFOR LDERI
-%type <a> LLCEIL LRCEIL LLFLOOR LRFLOOR LLIM_DEF LTO_PROVE LCONTINUE_DEF LUC_DEF LFSqueeze LINTROS LSUPPOSE LSET LIN LCONTINUE LAUTO_CONC LAUTO_NOHINT  
+%type <a> LPAP
+%type <a> TLCONST TLVAR TLNUM  TLsqrt TLln TLderi TLfrac TLeq DLeq TLleq TLgeq TLlt TLgt TLneq TLequiv TLlim TLto TLinfty TLPinfty TLNinfty TLsin TLcos TLsup TLforall TLexists
+%type <a> LGOAL LMATH1 LMATH2 LPROOF LQED LGIVEN LUSE LKASaverage LKSGaverage LKAGaverage LREMEMBER LCONCLUDE LEQUNADD LSINCE  LTRANS LTHEN LSAME LLB1L LLB1R LLB2L LLB2R LLB3L LLB3R LABS LMAX LMIN LCOMMA LBOTH LFOR LDERI LSQUARE LMONOINC LMONODEC
+%type <a> LLCEIL LRCEIL LLFLOOR LRFLOOR LLIM_DEF LSEQ_CONV_DEF LTO_PROVE LCONTINUE_DEF LUC_DEF LFSqueeze LINTROS LSUPPOSE LSET LIN LIS LIF LHAVE LAUTO_CONC LAUTO_NOHINT LAUTO_BWD_NOHINT LCONTINUE LUCONTINUE FUNC_HEAD LSUPRE_THEOREM LMONO_CONV_THEOREM LUNIQUE_DEF LBOUND_DEF LSUPRE_DEF LINFI_DEF LBECAUSE LBOUND_ABOVE LBOUND_BELOW TLBELONG
+
+%token <a> CONVERGE DIVERGE BOUND UNIQUE
+%type <a> LCONVERGE LDIVERGE LBOUND LUNIQUE
+
 //to reduce conflicts and let Mult priorer to add.
 //high
 %right TVAR
 %right KSGaverage KAGaverage KASaverage
-%right Tminus Tadd 
-%right Ttimes Tdiv
+%left Tminus Tadd 
+%left Ttimes Tdiv
 %right Tpower 
 
 %left TO_PROVE
 
 //low
 
-%type <a> PROGRAM STATEMENT GOAL_STATEMENT GIVEN_STATEMENT MATH_EQUATION_LIST MATH_EQUATION EQUATION ACTION  EXPR LIM_HEAD KNOWLEDGE SINCE_CLAUSE MEMORY_TERM CONTINUED_EQUATION CONTINUED_VAR EQS TEQ ACTION_STATEMENT INTERVAL FUNC_HEAD FUNC_EQUATION
+%type <a> PROGRAM STATEMENT PROOF_STATEMENT_LIST PROOF_STATEMENT GOAL_STATEMENT GIVEN_STATEMENT MATH_EQUATION_LIST MATH_EQUATION EQUATION ACTION  EXPR LIM_HEAD KNOWLEDGE SINCE_CLAUSE MEMORY_TERM CONTINUED_EQUATION CONTINUED_VAR EQS TEQ ACTION_STATEMENT INTERVAL  FUNC_EQUATION 
 
 %%
 PROGRAM: STATEMENT
@@ -75,6 +81,7 @@ PROGRAM: STATEMENT
 	$$ = (newast(nt_PROGRAM,NULL,prog_list,$1,$2,$2->lineNum));
 	root=$$;
 	}
+    
 
 ;
 
@@ -88,74 +95,108 @@ STATEMENT: GOAL_STATEMENT
         printf("->STATEMENT\n");
         $$ = (newast(nt_STATEMENT,NULL,stmt_given,$1,NULL,$1->lineNum));
     }
-    | LQED
+    | PROOF_STATEMENT_LIST
     {
         printf("->STATEMENT\n");
-        $$ = (newast(nt_STATEMENT,NULL,stmt_qed,$1,NULL,$1->lineNum));
+        $$ = (newast(nt_STATEMENT,NULL,stmt_proof_list,$1,NULL,$1->lineNum));
     }
     | LPROOF
     {
-        printf("->STATEMENT\n");
+        printf("STATEMENT\n");
         $$ = (newast(nt_STATEMENT,NULL,stmt_proof,$1,NULL,$1->lineNum));
+    }
+    | LTO_PROVE
+    {
+        printf("STATEMENT\n");
+        $$ = (newast(nt_STATEMENT,NULL,stmt_proof,$1,NULL,$1->lineNum));
+    }
+    
+;
+
+PROOF_STATEMENT_LIST : PROOF_STATEMENT
+    {
+        printf("->PROOF_STATEMENT_LIST (proof_stmt_list_single)\n");
+        $$ = (newast(nt_PROOF_STATEMENT_LIST,NULL,proof_stmt_list_single,$1,NULL,$1->lineNum));
+    }
+    | PROOF_STATEMENT LCOMMA PROOF_STATEMENT_LIST
+    {
+        printf("->PROOF_STATEMENT_LIST (proof_stmt_list)\n");
+        struct ast *label = newast(others_remember,NULL,0,$1,$3,$3->lineNum);
+        $$ = (newast(nt_PROOF_STATEMENT_LIST,NULL,proof_stmt_list,$2,label,label->lineNum));
+    }
+    | LPAP MATH_EQUATION LLB3L PROOF_STATEMENT_LIST LLB3R PROOF_STATEMENT_LIST
+    {
+        printf("->PROOF_STATEMENT_LIST (proof_stmt_PoseAndProve)\n");
+        struct ast *label = newast(others_remember,NULL,0,$4,$6,$6->lineNum);
+        $$ = (newast(nt_PROOF_STATEMENT_LIST,NULL,proof_stmt_PoseAndProve,$2,label,$5->lineNum));
+    }
+    | ACTION_STATEMENT LLB3L PROOF_STATEMENT_LIST LLB3R PROOF_STATEMENT_LIST
+    {
+        printf("->PROOF_STATEMENT_LIST (proof_stmt_PoseVar)\n");
+        struct ast *label = newast(others_remember,NULL,0,$3,$5,$5->lineNum);
+        $$ = (newast(nt_PROOF_STATEMENT_LIST,NULL,proof_stmt_PoseVar,$1,label,$4->lineNum));
+    }
+;
+
+PROOF_STATEMENT : LQED
+    {
+        printf("->PROOF_STATEMENT\n");
+        $$ = (newast(nt_PROOF_STATEMENT,NULL,stmt_qed,$1,NULL,$1->lineNum));
     }
     | SINCE_CLAUSE LTHEN MATH_EQUATION LREMEMBER MEMORY_TERM
     {
-        printf("->STATEMENT\n");
+        printf("->PROOF_STATEMENT\n");
         struct ast *label = newast(others_remember,NULL,0,$3,$5,$5->lineNum);
-        $$ = newast(nt_STATEMENT,NULL,stmt_since_remember_as,$1,label,label->lineNum);
+        $$ = newast(nt_PROOF_STATEMENT,NULL,stmt_since_remember_as,$1,label,label->lineNum);
     }
     | ACTION LTHEN MATH_EQUATION LREMEMBER MEMORY_TERM
     {
-        printf("->STATEMENT\n");
+        printf("->PROOF_STATEMENT\n");
         struct ast *label = newast(others_remember,NULL,0,$3,$5,$5->lineNum);
-        $$ = newast(nt_STATEMENT,NULL,stmt_action_math_equation,$1,label,label->lineNum);
+        $$ = newast(nt_PROOF_STATEMENT,NULL,stmt_action_math_equation,$1,label,label->lineNum);
     }
     | ACTION LTHEN LCONCLUDE
     {
-        printf("->STATEMENT\n");
-        $$ = (newast(nt_STATEMENT,NULL,stmt_action_conclude,$1,$3,$3->lineNum));
+        printf("->PROOF_STATEMENT\n");
+        $$ = (newast(nt_PROOF_STATEMENT,NULL,stmt_action_conclude,$1,$3,$3->lineNum));
     }
     | LUSE LLIM_DEF LTO_PROVE
     {
         //使用xxx证明。
-        printf("->\n");
-        $$ = (newast(nt_STATEMENT,NULL,stmt_use_limit_to_prove,$1,$2,$3->lineNum));
+        printf("->PROOF_STATEMENT\n");
+        $$ = (newast(nt_PROOF_STATEMENT,NULL,stmt_use_limit_to_prove,$1,$2,$3->lineNum));
     }
     | LUSE LCONTINUE_DEF LTO_PROVE
     {
         //使用xxx证明。
-        printf("->\n");
-        $$ = (newast(nt_STATEMENT,NULL,stmt_use_continue_to_prove,$1,$2,$3->lineNum));
+        printf("->PROOF_STATEMENT\n");
+        $$ = (newast(nt_PROOF_STATEMENT,NULL,stmt_use_continue_to_prove,$1,$2,$3->lineNum));
     }
     | LUSE LUC_DEF LTO_PROVE
     {
         //使用xxx证明。
-        printf("->\n");
-        $$ = (newast(nt_STATEMENT,NULL,stmt_use_uc_to_prove,$1,$2,$3->lineNum));
+        printf("->PROOF_STATEMENT\n");
+        $$ = (newast(nt_PROOF_STATEMENT,NULL,stmt_use_uc_to_prove,$1,$2,$3->lineNum));
     }
     | ACTION_STATEMENT
     {
-        printf("->statement:action_statement\n");
-        $$ = (newast(nt_STATEMENT,NULL,stmt_action,$1,NULL,$1->lineNum));
+        printf("->proof_statement:action_statement\n");
+        $$ = (newast(nt_PROOF_STATEMENT,NULL,stmt_action,$1,NULL,$1->lineNum));
     }
     |SINCE_CLAUSE MATH_EQUATION
     {
-        printf("->STATEMENT no remember\n");
-        $$ = newast(nt_STATEMENT,NULL,stmt_since_no_remember,$1,$2,$2->lineNum); 
+        printf("->PROOF_STATEMENT no remember\n");
+        $$ = newast(nt_PROOF_STATEMENT,NULL,stmt_since_no_remember,$1,$2,$2->lineNum); 
     }
     |SINCE_CLAUSE LTHEN MATH_EQUATION
     {
-        printf("->STATEMENT no remember\n");
-        $$ = newast(nt_STATEMENT,NULL,stmt_since_no_remember,$1,$3,$3->lineNum); 
-    }
-    | FUNC_EQUATION LIN EXPR LCONTINUE
-    {   printf("->STATEMENT no remember\n");
-        $$ = newast(nt_STATEMENT,NULL,point_continue,$1,$3,$4->lineNum); 
-
-    }
-    
-    
+        printf("->PROOF_STATEMENT no remember\n");
+        $$ = newast(nt_PROOF_STATEMENT,NULL,stmt_since_no_remember,$1,$3,$3->lineNum); 
+    }    
+ 
 ;
+
+
 MATH_EQUATION_LIST: MATH_EQUATION 
     {
         printf("->MATH_LIST\n");
@@ -191,6 +232,21 @@ ACTION_STATEMENT: LINTROS TLVAR
         printf("->ACTION_statement");
         $$ = (newast(nt_ACTION_STATEMENT,NULL,action_stmt_intros,$1,$2,$2->lineNum)); 
     }
+    | LINTROS LMATH1 TLVAR LMATH1  MATH_EQUATION_LIST
+    {
+        //引入满足一系列条件的变量
+        printf("->ACTION_statement");
+        $$ = (newast(nt_ACTION_STATEMENT,NULL,action_stmt_intros_suppose_list_equation, $3,$5,$5->lineNum)); 
+    }
+    | LINTROS LMATH1 TLVAR LMATH1
+    {
+        //引入变量
+        printf("->ACTION_statement");
+        $$ = (newast(nt_ACTION_STATEMENT,NULL,action_stmt_intros,$1,$3,$4->lineNum)); 
+    }
+
+
+
     | LSUPPOSE MATH_EQUATION
     {
         printf("->ACTION_statement");
@@ -209,6 +265,11 @@ ACTION_STATEMENT: LINTROS TLVAR
         $$ = newast(nt_ACTION_STATEMENT,NULL,action_stmt_set_as_math_expr2,$1,to_set,to_set->lineNum);
     };
 
+
+
+
+
+
 MATH_EQUATION: LMATH1 EQUATION LMATH1
     {
         printf("->MATH_EQUATION\n");
@@ -220,6 +281,11 @@ MATH_EQUATION: LMATH1 EQUATION LMATH1
         $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_math2,$1,$2,$3->lineNum));
     }
     | LMATH2 CONTINUED_EQUATION LMATH2
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_continued2,$1,$2,$3->lineNum));
+    }
+    | LMATH1 CONTINUED_EQUATION LMATH1
     {
         printf("->MATH_EQUATION\n");
         $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_continued2,$1,$2,$3->lineNum));
@@ -254,10 +320,127 @@ MATH_EQUATION: LMATH1 EQUATION LMATH1
         printf("->MATH_EQUATION\n");
         $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_forall,$3,$5,$5->lineNum));
     }
-    | LMATH1 TLexists CONTINUED_VAR LMATH2 MATH_EQUATION 
+    | LMATH2 TLexists CONTINUED_VAR LMATH2 MATH_EQUATION 
     {
         printf("->MATH_EQUATION\n");
         $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_exists,$3,$5,$5->lineNum));
+    }   
+
+    | LMATH1 TLexists CONTINUED_VAR LMATH1 LSUPPOSE MATH_EQUATION 
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_exists,$3,$6,$6->lineNum));
+    }
+    | TLexists LMATH1 EXPR LMATH1 MATH_EQUATION
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_exists_sets,$3,$5,$5->lineNum));
+    }
+    | TLexists LMATH1 EXPR LMATH1 LSUPPOSE MATH_EQUATION
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_exists_sets,$3,$5,$5->lineNum));
+    }
+    | TLforall LMATH1 EXPR LMATH1 MATH_EQUATION
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_forall_sets,$3,$5,$5->lineNum));
+    }
+    | TLforall LMATH1 EXPR LMATH1 LSUPPOSE MATH_EQUATION
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_forall_sets,$3,$5,$5->lineNum));
+    }
+    | FUNC_HEAD LIN LMATH1 EXPR LMATH1 LCONTINUE
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_in_var_continue,$1,$4,$6->lineNum));  
+    }
+    | FUNC_HEAD LIN MATH_EQUATION LCONTINUE
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_in_interval_continue,$1,$3,$4->lineNum));  
+    }
+    | FUNC_HEAD  LCONTINUE
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_continue,$1,NULL,$2->lineNum));  
+    }
+    | FUNC_HEAD LIN LMATH1 EXPR LMATH1 LUCONTINUE
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_in_var_ucontinue,$1,$4,$6->lineNum));  
+    }
+    | FUNC_HEAD LIN MATH_EQUATION LUCONTINUE
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_in_interval_ucontinue,$1,$3,$4->lineNum));  
+    }
+    | FUNC_HEAD  LUCONTINUE
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_ucontinue,$1,NULL,$2->lineNum));  
+    }
+    | LMATH1 EXPR LMATH1 LMONOINC
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_monoinc,$2,NULL,$4->lineNum));  
+    }
+    | LMATH1 EXPR LMATH1 LMONODEC
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_monodec,$2,NULL,$4->lineNum));  
+    }
+    | LMATH1 EXPR LMATH1 LIS LMATH1 EXPR LMATH1 LBOUND_ABOVE
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_bound_above,$2,$6,$8->lineNum));  
+    }
+    | LMATH1 EXPR LMATH1 LIS LMATH1 EXPR LMATH1 LBOUND_BELOW
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_bound_below,$2,$6,$8->lineNum));  
+    }
+    | LIF MATH_EQUATION THEN MATH_EQUATION
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_impl,$2,$4,$4->lineNum));  
+    }
+    | LMATH1 EXPR LMATH1 LHAVE LBOUND_ABOVE
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_have_bound_above,$2,NULL,$5->lineNum));  
+    }
+    | LMATH1 EXPR LMATH1 LHAVE LBOUND_BELOW
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_have_bound_below,$2,NULL,$5->lineNum));  
+    }
+    | TLVAR TLBELONG TLVAR 
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_n_belong_N,$1,$3,$3->lineNum));
+    }
+    
+    | LMATH1 EXPR LMATH1 LCONVERGE
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_converge,$2,NULL,$4->lineNum));  
+    }
+    | LMATH1 EXPR LMATH1 LDIVERGE
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_diverge,$2,NULL,$4->lineNum));  
+    }
+    | LMATH1 EXPR LMATH1 LHAVE LBOUND
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_have_bound,$2,NULL,$5->lineNum)); 
+    }
+    | LMATH1 EXPR LMATH1 LUNIQUE
+    {
+        printf("->MATH_EQUATION\n");
+        $$ = (newast(nt_MATH_EQUATION,NULL,math_equation_unique,$2,NULL,$4->lineNum));  
     }
 ;
 
@@ -357,6 +540,7 @@ CONTINUED_VAR: TLVAR
         printf("->CONTINUED_VAR\n");
         $$ = (newast(nt_CONTINUED_VAR,NULL,0,$1,$2,$2->lineNum));
     }
+;
 
 LIM_HEAD: TLlim LLB3L TLVAR TLto TLinfty LLB3R
    {
@@ -386,6 +570,7 @@ FUNC_HEAD: TLVAR LLB1L TLVAR LLB1R
     $$ = (newast(nt_FUNC_HEAD,NULL,func_head_binding,$1,$3,$4->lineNum));
    }
 ;
+
 INTERVAL: LLB1L EXPR LCOMMA EXPR LLB1R
 {
     printf("->INTERVAL\n");
@@ -445,6 +630,18 @@ EXPR: TLVAR
         printf("->EXPR\n");
         $$ = (newast(nt_EXPR,NULL,Expr_tnum,$1,NULL,$1->lineNum));
     }
+
+    | TLPinfty 
+    {
+        printf("->EXPR\n");
+        $$ = (newast(nt_EXPR,NULL,Expr_tpinfty,$1,NULL,$1->lineNum));
+    }
+    | TLNinfty 
+    {
+        printf("->EXPR\n");
+        $$ = (newast(nt_EXPR,NULL,Expr_tninfty,$1,NULL,$1->lineNum));
+    }
+    
     | LLB1L Tminus EXPR LLB1R
     {
         printf("->EXPR\n");
@@ -500,6 +697,11 @@ EXPR: TLVAR
         printf("->EXPR\n");
         $$ = (newast(nt_EXPR,NULL,Expr_tcos,$3,NULL,$4->lineNum));
     }
+    | TLsup LLB3L EXPR LLB3R
+    {
+        printf("->EXPR\n");
+        $$ = (newast(nt_EXPR,NULL,Expr_tsup,$3,NULL,$4->lineNum));
+    }
     | LLB3L EXPR LLB3R LLB3L EXPR LLB3R
     {
         printf("->EXPR\n");
@@ -525,7 +727,7 @@ EXPR: TLVAR
         printf("->EXPR\n");
         $$ = (newast(nt_EXPR,NULL,Expr_tfrac_3L_3R_3L_3R,$3,$6,$7->lineNum));
     }
-    | LIM_HEAD  LLB3L EXPR LLB3R
+    | LIM_HEAD LLB3L EXPR LLB3R
     {
         printf("->EXPR\n");
         $$ = (newast(nt_EXPR,NULL,Expr_lim_head,$1,$3,$4->lineNum));
@@ -546,6 +748,11 @@ EXPR: TLVAR
         printf("->EXPR\n");
         $$ = (newast(nt_EXPR,NULL,Expr_tpower,$1,$4,$5->lineNum));
     }
+    | LMAX LLB1L EXPR LCOMMA EXPR LLB1R
+    {
+        printf("->EXPR\n");
+        $$ = (newast(nt_EXPR,NULL,Expr_tmax,$3,$5,$6->lineNum));
+    }
     | LMIN LLB1L EXPR LCOMMA EXPR LLB1R
     {
         printf("->EXPR\n");
@@ -556,6 +763,17 @@ EXPR: TLVAR
         printf("->EXPR\n");
         $$ = (newast(nt_EXPR,NULL,Expr_func,$1,NULL,$1->lineNum));
     }
+    | LLB3L TLVAR LCOMMA MATH_EQUATION LLB3R
+    {
+        printf("->EXPR\n");
+        $$ = (newast(nt_EXPR,NULL,Expr_seq_sets,$2,$4,$5->lineNum));
+    }     
+    | LLB3L TLVAR LABS MATH_EQUATION LLB3R
+    {
+        printf("->EXPR\n");
+        $$ = (newast(nt_EXPR,NULL,Expr_seq_sets,$2,$4,$5->lineNum));
+    } 
+    
 
 
 ;
@@ -590,6 +808,46 @@ KNOWLEDGE: LKASaverage
         printf("->knowledge\n");
         $$ = (newast(nt_KNOWLEDGE,NULL,Knowledge_FSqueeze,$1,NULL,$1->lineNum)); 
     }
+    | LUNIQUE_DEF
+    {
+        printf("->knowledge\n");
+        $$ = (newast(nt_KNOWLEDGE,NULL,Knowledge_Unique_def,$1,NULL,$1->lineNum)); 
+    }
+    | LBOUND_DEF
+    {
+        printf("->knowledge\n");
+        $$ = (newast(nt_KNOWLEDGE,NULL,Knowledge_Bound_def,$1,NULL,$1->lineNum)); 
+    }
+    | LSUPRE_DEF
+    {
+        printf("->knowledge\n");
+        $$ = (newast(nt_KNOWLEDGE,NULL,Knowledge_Supre_def,$1,NULL,$1->lineNum)); 
+    }
+    | LINFI_DEF
+    {
+        printf("->knowledge\n");
+        $$ = (newast(nt_KNOWLEDGE,NULL,Knowledge_Infi_def,$1,NULL,$1->lineNum)); 
+    }
+    | LSUPRE_THEOREM
+    {
+        printf("->knowledge\n");
+        $$ = (newast(nt_KNOWLEDGE,NULL,Knowledge_Supre_the,$1,NULL,$1->lineNum)); 
+    }
+    | LMONO_CONV_THEOREM
+    {
+        printf("->knowledge\n");
+        $$ = (newast(nt_KNOWLEDGE,NULL,Knowledge_Mono_conv_the,$1,NULL,$1->lineNum)); 
+    }
+    | LLIM_DEF
+    {
+        printf("->knowledge\n");
+        $$ = (newast(nt_KNOWLEDGE,NULL,Knowledge_Lim_def,$1,NULL,$1->lineNum)); 
+    }
+    | LSEQ_CONV_DEF
+    {
+        printf("->knowledge\n");
+        $$ = (newast(nt_KNOWLEDGE,NULL,Knowledge_Seq_conv_def,$1,NULL,$1->lineNum)); 
+    }
 ;
 
 SINCE_CLAUSE: LSINCE KNOWLEDGE
@@ -616,13 +874,23 @@ SINCE_CLAUSE: LSINCE KNOWLEDGE
     }
     | LAUTO_NOHINT
     {
-        printf("->since\n");
+        printf("->SINCE\n");
         $$ = (newast(nt_SINCE_CLAUSE,NULL,Since_clause_auto_nohint,$1,NULL,$1->lineNum));
+    }
+    | LAUTO_BWD_NOHINT
+    {
+        printf("->SINCE\n");
+        $$ = (newast(nt_SINCE_CLAUSE,NULL,Since_clause_auto_bwd_nohint,$1,NULL,$1->lineNum));
     }
     | LSINCE TLVAR LTRANS
     {
         printf("->SINCE\n");
         $$ = (newast(nt_SINCE_CLAUSE,NULL,Since_clause_trans,$2,NULL,$3->lineNum));
+    }
+    | LBOTH LSQUARE
+    {
+        printf("->STATEMENT Both square\n");
+        $$ = newast(nt_SINCE_CLAUSE,NULL,Since_clause_BothSquare,$1,$2,$2->lineNum); 
     }
     | LBOTH LDERI
     {
@@ -634,6 +902,12 @@ SINCE_CLAUSE: LSINCE KNOWLEDGE
         printf("->STATEMENT Both deri\n");
         $$ = newast(nt_SINCE_CLAUSE,NULL,Since_clause_BothDeri_var,$3,NULL,$4->lineNum); 
     }
+    | LBECAUSE MATH_EQUATION
+    {
+        printf("->STATEMENT Because\n");
+        $$ = newast(nt_SINCE_CLAUSE,NULL,Since_clause_because,$2,NULL,$2->lineNum); 
+    }
+    
 ;
 
 ACTION: EQS LEQUNADD
@@ -685,12 +959,12 @@ TLCONST: TCONST
 
 TLVAR: TVAR
     {
-        //printf("->TLVAR");
+        printf("->TLVAR %s", $1->addr);
         $$ = (newast(ntl_TVAR,NULL,Without_line,$1,NULL,NULL));
     }
     |  TVAR TLINE
     {
-        printf("->Line VAR");
+        printf("->Line VAR %s", $1->addr);
         $$ = (newast(ntl_TVAR,NULL,Has_line,$1,$2,$2));
     }
 ;
@@ -1205,12 +1479,24 @@ LABS: ABS
     }
 ;
 
+LMAX: MAX
+    {
+        //printf("->MAX");
+        $$ = (newast(ntl_max,NULL,Without_line,$1,NULL,NULL));
+    }
+    | MAX TLINE
+    {
+        printf("->Line MAX");
+        $$ = (newast(ntl_max,NULL,Has_line,$1,$2,$2));
+    }
+;
+
 LMIN: MIN
     {
         //printf("->MIN");
         $$ = (newast(ntl_min,NULL,Without_line,$1,NULL,NULL));
     }
-    |  MIN TLINE
+    | MIN TLINE
     {
         printf("->Line MIN");
         $$ = (newast(ntl_min,NULL,Has_line,$1,$2,$2));
@@ -1277,6 +1563,18 @@ LLIM_DEF: LIM_DEF
     }
 ;
 
+LSEQ_CONV_DEF: SEQ_CONV_DEF
+    {
+        //printf("->SEQ_CONV_DEF");
+        $$ = (newast(ntl_SEQ_CONV_DEF,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  SEQ_CONV_DEF TLINE
+    {
+        printf("->Line SEQ_CONV_DEF");
+        $$ = (newast(ntl_SEQ_CONV_DEF,NULL,Has_line,$1,$2,$2));
+    }
+;
+
 LTO_PROVE: TO_PROVE
     {
         //printf("->TO_PROVE");
@@ -1313,6 +1611,18 @@ TLcos: Tcos
     }
 ;
 
+TLsup: Tsup
+    {
+        //printf("->Tsup");
+        $$ = (newast(ntl_sup,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  Tsup TLINE
+    {
+        printf("->Line Tsup");
+        $$ = (newast(ntl_sup,NULL,Has_line,$1,$2,$2));
+    }
+;
+
 LCONTINUE_DEF: CONTINUE_DEF
     {
         //printf("->CONTINUE_DEF");
@@ -1334,6 +1644,150 @@ LUC_DEF: UC_DEF
     {
         printf("->Line UC_DEF");
         $$ = (newast(ntl_UC_DEF,NULL,Has_line,$1,$2,$2));
+    }
+;
+
+LSUPRE_THEOREM: SUPRE_THEOREM
+{
+        //printf("->SUPRE_THEOREM");
+        $$ = (newast(ntl_SUPRE_THEOREM,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  SUPRE_THEOREM TLINE
+    {
+        printf("->Line SUPRE_THEOREM");
+        $$ = (newast(ntl_SUPRE_THEOREM,NULL,Has_line,$1,$2,$2));
+    }
+;
+
+LMONO_CONV_THEOREM: MONO_CONV_THEOREM
+{
+        //printf("->MONO_CONV_THEOREM");
+        $$ = (newast(ntl_MONO_CONV_THEOREM,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  MONO_CONV_THEOREM TLINE
+    {
+        printf("->Line MONO_CONV_THEOREM");
+        $$ = (newast(ntl_MONO_CONV_THEOREM,NULL,Has_line,$1,$2,$2));
+    }
+;
+
+LUNIQUE_DEF: UNIQUE_DEF
+{
+        //printf("->UNIQUE_DEF");
+        $$ = (newast(ntl_UNIQUE_DEF,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  UNIQUE_DEF TLINE
+    {
+        printf("->Line UNIQUE_DEF");
+        $$ = (newast(ntl_UNIQUE_DEF,NULL,Has_line,$1,$2,$2));
+    }
+;
+
+LBOUND_DEF: BOUND_DEF
+{
+        //printf("->BOUND_DEF");
+        $$ = (newast(ntl_BOUND_DEF,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  BOUND_DEF TLINE
+    {
+        printf("->Line BOUND_DEF");
+        $$ = (newast(ntl_BOUND_DEF,NULL,Has_line,$1,$2,$2));
+    }
+;
+
+LSUPRE_DEF: SUPRE_DEF
+{
+        //printf("->SUPRE_DEF");
+        $$ = (newast(ntl_SUPRE_DEF,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  SUPRE_DEF TLINE
+    {
+        printf("->Line SUPRE_DEF");
+        $$ = (newast(ntl_SUPRE_DEF,NULL,Has_line,$1,$2,$2));
+    }
+;
+
+LINFI_DEF: INFI_DEF
+{
+        //printf("->INFI_DEF");
+        $$ = (newast(ntl_INFI_DEF,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  INFI_DEF TLINE
+    {
+        printf("->Line INFI_DEF");
+        $$ = (newast(ntl_INFI_DEF,NULL,Has_line,$1,$2,$2));
+    }
+;
+
+LBOUND_BELOW: BOUND_BELOW
+{
+        //printf("->BOUND_BELOW");
+        $$ = (newast(ntl_BOUND_BELOW,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  BOUND_BELOW TLINE
+    {
+        printf("->Line BOUND_BELOW");
+        $$ = (newast(ntl_BOUND_BELOW,NULL,Has_line,$1,$2,$2));
+    }
+;
+
+LBOUND_ABOVE: BOUND_ABOVE
+{
+        //printf("->BOUND_ABOVE");
+        $$ = (newast(ntl_BOUND_ABOVE,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  BOUND_ABOVE TLINE
+    {
+        printf("->Line BOUND_ABOVE");
+        $$ = (newast(ntl_BOUND_ABOVE,NULL,Has_line,$1,$2,$2));
+    }
+;
+
+LCONVERGE: CONVERGE
+{
+        //printf("->CONVERGE");
+        $$ = (newast(ntl_CONVERGE,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  CONVERGE TLINE
+    {
+        printf("->Line CONVERGE");
+        $$ = (newast(ntl_CONVERGE,NULL,Has_line,$1,$2,$2));
+    }
+;
+
+LDIVERGE: DIVERGE
+{
+        //printf("->DIVERGE");
+        $$ = (newast(ntl_DIVERGE,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  DIVERGE TLINE
+    {
+        printf("->Line DIVERGE");
+        $$ = (newast(ntl_DIVERGE,NULL,Has_line,$1,$2,$2));
+    }
+;
+
+LBOUND: BOUND
+{
+        //printf("->BOUND");
+        $$ = (newast(ntl_BOUND,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  BOUND TLINE
+    {
+        printf("->Line BOUND");
+        $$ = (newast(ntl_BOUND,NULL,Has_line,$1,$2,$2));
+    }
+;
+
+LUNIQUE: UNIQUE
+{
+        //printf("->UNIQUE");
+        $$ = (newast(ntl_UNIQUE,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  UNIQUE TLINE
+    {
+        printf("->Line UNIQUE");
+        $$ = (newast(ntl_UNIQUE,NULL,Has_line,$1,$2,$2));
     }
 ;
 
@@ -1393,6 +1847,18 @@ LDERI: DERI
     {
         printf("->Line DERI");
         $$ = (newast(ntl_DERI,NULL,Has_line,$1,$2,$2));
+    }
+;
+
+LSQUARE: SQUARE
+    {
+        //printf("->SQUARE");
+        $$ = (newast(ntl_SQUARE,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  SQUARE TLINE
+    {
+        printf("->Line SQUARE");
+        $$ = (newast(ntl_SQUARE,NULL,Has_line,$1,$2,$2));
     }
 ;
 
@@ -1468,6 +1934,42 @@ LIN: IN
     }
 ;
 
+LIS: IS
+    {
+        //printf("->IS");
+        $$ = (newast(ntl_IS,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  IS TLINE
+    {
+        printf("->Line IS");
+        $$ = (newast(ntl_IS,NULL,Has_line,$1,$2,$2));
+    }
+;
+
+LIF: IF
+    {
+        //printf("->IF");
+        $$ = (newast(ntl_IF,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  IF TLINE
+    {
+        printf("->Line IF");
+        $$ = (newast(ntl_IF,NULL,Has_line,$1,$2,$2));
+    }
+;
+
+LHAVE: HAVE
+    {
+        //printf("->HAVE");
+        $$ = (newast(ntl_HAVE,NULL,Without_line,$1,NULL,NULL));
+    }
+    |  HAVE TLINE
+    {
+        printf("->Line HAVE");
+        $$ = (newast(ntl_HAVE,NULL,Has_line,$1,$2,$2));
+    }
+;
+
 LCONTINUE: CONTINUE
     {
         //printf("->CONTINUE");
@@ -1480,6 +1982,17 @@ LCONTINUE: CONTINUE
     }
 ;
 
+LUCONTINUE: UCONTINUE
+    {
+        //printf("->UCONTINUE");
+        $$ = (newast(ntl_UCONTINUE,NULL,Without_line,$1,NULL,NULL));
+    }
+    | UCONTINUE TLINE
+    {
+        printf("->Line UCONTINUE");
+        $$ = (newast(ntl_UCONTINUE,NULL,Has_line,$1,$2,$2));
+    }
+;
 LAUTO_CONC: AUTO_CONC
     {
         //printf("->AUTO_CONC");
@@ -1503,11 +2016,71 @@ LAUTO_NOHINT: AUTO_NOHINT
         $$ = (newast(ntl_AUTO_NOHINT,NULL,Has_line,$1,$2,$2));
     }
 
+LAUTO_BWD_NOHINT: AUTO_BWD_NOHINT
+    {
+        //printf("->AUTO_BWD_NOHINT");
+        $$ = (newast(ntl_AUTO_BWD_NOHINT,NULL,Without_line,$1,NULL,NULL));
+    }
+    | AUTO_BWD_NOHINT TLINE
+    {
+        printf("->Line AUTO_BWD_NOHINT");
+        $$ = (newast(ntl_AUTO_BWD_NOHINT,NULL,Has_line,$1,$2,$2));
+    }
 
+LBECAUSE: BECAUSE
+    {
+        //printf("->BECAUSE");
+        $$ = (newast(ntl_BECAUSE,NULL,Without_line,$1,NULL,NULL));
+    }
+    | BECAUSE TLINE
+    {
+        printf("->Line BECAUSE");
+        $$ = (newast(ntl_BECAUSE,NULL,Has_line,$1,$2,$2));
+    }
 
+TLBELONG: TBELONG
+    {
+        //printf("->TBELONG");
+        $$ = (newast(ntl_TBELONG,NULL,Without_line,$1,NULL,NULL));
+    }
+    | TBELONG TLINE
+    {
+        printf("->Line TBELONG");
+        $$ = (newast(ntl_TBELONG,NULL,Has_line,$1,$2,$2));
+    }
 
+LMONOINC: MONOINC
+    {
+        //printf("->MONOINC");
+        $$ = (newast(ntl_MONOINC,NULL,Without_line,$1,NULL,NULL));
+    }
+    | MONOINC TLINE
+    {
+        printf("->Line MONOINC");
+        $$ = (newast(ntl_MONOINC,NULL,Has_line,$1,$2,$2));
+    }
 
+LMONODEC: MONODEC
+    {
+        //printf("->MONODEC");
+        $$ = (newast(ntl_MONODEC,NULL,Without_line,$1,NULL,NULL));
+    }
+    | MONODEC TLINE
+    {
+        printf("->Line MONOINC");
+        $$ = (newast(ntl_MONODEC,NULL,Has_line,$1,$2,$2));
+    }
 
+LPAP: PAP
+    {
+        //printf("->PAP");
+        $$ = (newast(ntl_PAP,NULL,Without_line,$1,NULL,NULL));
+    }
+    | PAP TLINE
+    {
+        printf("->Line PAP ");
+        $$ = (newast(ntl_PAP,NULL,Has_line,$1,$2,$2));
+    }
 
 %%
 
